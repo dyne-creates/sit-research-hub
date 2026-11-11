@@ -1,0 +1,7 @@
+# Copy this file to local.properties and fill in local values.
+# Do not commit local.properties.
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+GOOGLE_WEB_CLIENT_ID=
+ALLOWED_EMAIL_DOMAIN=s.ubaguio.edu
+

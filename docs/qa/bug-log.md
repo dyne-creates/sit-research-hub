@@ -1,0 +1,4 @@
+# Bug Log
+
+Scaffold placeholder.
+
