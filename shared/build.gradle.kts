@@ -80,6 +80,7 @@ kotlin {
             implementation(libs.androidx.datastore.preferencesCore)
         }
         androidMain.dependencies {
+            implementation(libs.androidx.datastore.preferences)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
             implementation(libs.kotlinx.coroutines.android)
