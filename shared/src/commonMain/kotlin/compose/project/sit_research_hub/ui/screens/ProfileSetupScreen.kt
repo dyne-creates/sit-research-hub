@@ -1,250 +1,93 @@
-
 package compose.project.sit_research_hub.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
-private val PrimaryBlue = Color(0xFF263A63)
-private val SecondaryBlue = Color(0xFF4776B4)
-private val BackgroundColor = Color(0xFFF4F6FA)
-private val CardColor = Color.White
-private val TextColor = Color(0xFF252B36)
-private val BorderColor = Color(0xFFD5DCE8)
+private val Programs = listOf("BSIT", "BSCS", "BSCPE", "ACT-MM")
+private val Years = listOf("1st Year", "2nd Year", "3rd Year", "4th Year")
 
 @Composable
-fun ProfileSetupScreen(
-    onContinue: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BackgroundColor),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier
-                .width(420.dp)
-                .fillMaxHeight(0.85f)
-                .background(
-                    CardColor,
-                    RoundedCornerShape(22.dp)
-                )
-                .border(
-                    1.dp,
-                    BorderColor,
-                    RoundedCornerShape(22.dp)
-                )
-                .padding(horizontal = 28.dp, vertical = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+fun ProfileSetupScreen(onContinue: (program: String, yearLevel: String) -> Unit) {
+    var program by remember { mutableStateOf<String?>(null) }
+    var year by remember { mutableStateOf<String?>(null) }
+    var consent by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // SIT LOGO PLACEHOLDER
-            Box(
-                modifier = Modifier
-                    .size(82.dp)
-                    .background(
-                        PrimaryBlue,
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "SIT",
-                    color = Color.White,
-                    fontSize = 25.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // WELCOME MESSAGE
-            Text(
-                text = "Welcome to SIT\nResearch Hub!",
-                color = PrimaryBlue,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                lineHeight = 30.sp
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Let's personalize your feed so you\nwill see studies you qualify for.",
-                color = TextColor,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 21.sp
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // DIVIDER
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(BorderColor)
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // ACADEMIC PROGRAM
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+        Card(Modifier.fillMaxWidth().widthIn(max = 560.dp).padding(20.dp)) {
             Column(
-                modifier = Modifier.fillMaxWidth()
+                Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp, vertical = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "Your Academic Program",
-                    color = TextColor,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Box(Modifier.size(72.dp).background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
+                    Text("SIT", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                }
+                Text("Welcome to SIT Research Hub", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                Text("Tell us about yourself so we can show studies you qualify for.", textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-                Spacer(modifier = Modifier.height(8.dp))
+                ProfileDropdown("Academic program", program ?: "Select program", Programs, onSelected = { program = it; if (it == "ACT-MM" && year in listOf("3rd Year", "4th Year")) year = null })
+                ProfileDropdown("Year level", year ?: "Select year level", Years.filterNot { program == "ACT-MM" && it in listOf("3rd Year", "4th Year") }, enabled = program != null, onSelected = { year = it })
 
-                SelectionField(
-                    text = "Select Program"
-                )
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // YEAR LEVEL
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Year Level",
-                    color = TextColor,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                SelectionField(
-                    text = "Enter Year Level"
-                )
-            }
-
-            Spacer(modifier = Modifier.height(22.dp))
-
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(BorderColor)
-            )
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // PRIVACY AGREEMENT - VISUAL ONLY
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(17.dp)
-                        .border(
-                            1.5.dp,
-                            SecondaryBlue,
-                            RoundedCornerShape(4.dp)
-                        )
-                )
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Text(
-                    text = "I agree to the Privacy Policy & Data\nCollection Terms. Read",
-                    color = TextColor,
-                    fontSize = 12.sp,
-                    lineHeight = 18.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // CONTINUE
-            TextButton(
-                onClick = onContinue,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(
-                    text = "Continue to Home Page",
-                    color = SecondaryBlue,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    textDecoration = TextDecoration.Underline
-                )
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = consent, onCheckedChange = { consent = it })
+                    Text("I agree to the Privacy Policy and Data Collection Terms.", modifier = Modifier.padding(start = 8.dp))
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                Button(
+                    onClick = { if (program == null || year == null || !consent) error = "Select your program, year level, and consent to continue." else { error = null; onContinue(program!!, year!!) } },
+                    modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) { Text("Continue to Home") }
             }
         }
     }
 }
 
 @Composable
-private fun SelectionField(
-    text: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(46.dp)
-            .border(
-                1.dp,
-                BorderColor,
-                RoundedCornerShape(8.dp)
-            )
-            .background(
-                CardColor,
-                RoundedCornerShape(8.dp)
-            )
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = text,
-            color = Color(0xFF858D9B),
-            fontSize = 14.sp
-        )
-
-        Text(
-            text = "⌄",
-            color = SecondaryBlue,
-            fontSize = 22.sp
-        )
+private fun ProfileDropdown(label: String, value: String, options: List<String>, enabled: Boolean = true, onSelected: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Box {
+            OutlinedButton(onClick = { expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(value); Text(if (expanded) "⌃" else "⌄") }
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { option -> DropdownMenuItem(text = { Text(option) }, onClick = { onSelected(option); expanded = false }) }
+            }
+        }
     }
 }

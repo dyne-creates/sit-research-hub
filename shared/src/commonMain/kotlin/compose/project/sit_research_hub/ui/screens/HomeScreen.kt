@@ -16,56 +16,68 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.unit.sp
-
-private val Navy = Color(0xFF263A63)
-private val Blue = Color(0xFF4776B4)
-private val Background = Color(0xFFF4F6FA)
-private val DarkText = Color(0xFF252B36)
-private val BorderColor = Color(0xFFD5DCE8)
-private val White = Color.White
+import androidx.compose.runtime.collectAsState
+import compose.project.sit_research_hub.domain.model.Study
+import compose.project.sit_research_hub.domain.model.StudyType
+import compose.project.sit_research_hub.presentation.home.HomeViewModel
 
 @Composable
 fun HomeScreen(
+    viewModel: HomeViewModel,
     onResearchClick: (String) -> Unit,
     onSettingsClick: () -> Unit
 ) {
+    var query by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf<String?>(null) }
+    var eligibleOnly by remember { mutableStateOf(false) }
+    val visibleStudies = viewModel.visibleStudies.collectAsState().value
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background),
+            .background(MaterialTheme.colorScheme.background),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Column(
             modifier = Modifier
-                .width(420.dp)
+                .fillMaxWidth()
+                .widthIn(max = 760.dp)
                 .weight(1f)
-                .background(White)
+                .background(MaterialTheme.colorScheme.surface)
         ) {
             // HEADER
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp)
-                    .background(Navy)
+                    .background(MaterialTheme.colorScheme.primary)
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     text = "Research Hub",
-                    color = White,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -73,41 +85,25 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .size(30.dp)
-                        .border(1.5.dp, White, CircleShape),
+                        .border(1.5.dp, MaterialTheme.colorScheme.onPrimary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "♙",
-                        color = White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 21.sp
                     )
                 }
             }
 
             // SEARCH BAR
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, top = 15.dp)
-                    .height(43.dp)
-                    .border(1.dp, BorderColor, RoundedCornerShape(4.dp))
-                    .padding(horizontal = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "⌕",
-                    color = DarkText,
-                    fontSize = 27.sp
-                )
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Text(
-                    text = "Search",
-                    color = DarkText,
-                    fontSize = 14.sp
-                )
-            }
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it; viewModel.updateQuery(it) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                singleLine = true,
+                label = { Text("Search studies") }
+            )
 
             // RESEARCH FILTERS
             Row(
@@ -116,23 +112,20 @@ fun HomeScreen(
                     .padding(start = 12.dp, end = 12.dp, top = 9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FilterChip("All", true)
+                FilterChip("All", selectedType == null) { selectedType = null; viewModel.updateType(null) }
 
                 Spacer(modifier = Modifier.width(5.dp))
 
-                FilterChip("Qualitative", false)
+                FilterChip("Qualitative", selectedType == "Qualitative") { selectedType = "Qualitative"; viewModel.updateType(StudyType.QUALITATIVE) }
 
                 Spacer(modifier = Modifier.width(5.dp))
 
-                FilterChip("Quantitative", false)
+                FilterChip("Quantitative", selectedType == "Quantitative") { selectedType = "Quantitative"; viewModel.updateType(StudyType.QUANTITATIVE) }
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Text(
-                    text = "▼",
-                    color = Navy,
-                    fontSize = 21.sp
-                )
+                Checkbox(checked = eligibleOnly, onCheckedChange = { eligibleOnly = it; viewModel.updateEligibleOnly(it) })
+                Text("Eligible", color = MaterialTheme.colorScheme.onSurface, fontSize = 11.sp)
             }
 
             // RESEARCH CARDS
@@ -140,15 +133,18 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ResearchCard {
-                    onResearchClick("1")
-                }
-
-                ResearchCard {
-                    onResearchClick("2")
+                if (visibleStudies.isEmpty()) {
+                    Text("No studies match your search or filters.", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(16.dp))
+                } else {
+                    visibleStudies.forEach { study ->
+                        ResearchCard(study) {
+                            onResearchClick(study.id)
+                        }
+                    }
                 }
             }
 
@@ -157,7 +153,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(62.dp)
-                    .background(Navy),
+                    .background(MaterialTheme.colorScheme.primary),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -183,12 +179,12 @@ fun HomeScreen(
                 ) {
                     Text(
                         text = "⚙",
-                        color = White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 23.sp
                     )
                     Text(
                         text = "Settings",
-                        color = White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 10.sp
                     )
                 }
@@ -200,23 +196,25 @@ fun HomeScreen(
 @Composable
 private fun FilterChip(
     text: String,
-    selected: Boolean
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(5.dp))
-            .background(if (selected) Navy else White)
+            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
             .border(
                 width = 1.dp,
-                color = if (selected) Navy else Blue,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                 shape = RoundedCornerShape(5.dp)
             )
+            .clickable(onClick = onClick)
             .padding(horizontal = 9.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            color = if (selected) White else Navy,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium
         )
@@ -225,6 +223,7 @@ private fun FilterChip(
 
 @Composable
 private fun ResearchCard(
+    study: Study,
     onReadMore: () -> Unit
 ) {
     Column(
@@ -232,11 +231,11 @@ private fun ResearchCard(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = Blue,
+                color = MaterialTheme.colorScheme.secondary,
                 shape = RoundedCornerShape(13.dp)
             )
             .clip(RoundedCornerShape(13.dp))
-            .background(White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(10.dp)
     ) {
         Row(
@@ -244,8 +243,8 @@ private fun ResearchCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Research Title",
-                color = Navy,
+                text = study.title,
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -257,22 +256,22 @@ private fun ResearchCard(
             Box(
                 modifier = Modifier
                     .background(
-                        Color(0xFFEAF0FA),
+                        MaterialTheme.colorScheme.tertiary,
                         RoundedCornerShape(3.dp)
                     )
                     .padding(horizontal = 5.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = "Qualitative",
-                    color = Navy,
+                    text = study.type.name.lowercase().replaceFirstChar { it.uppercase() },
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 8.sp
                 )
             }
         }
 
         Text(
-            text = "Respondents Qualification",
-            color = DarkText,
+            text = "Respondent requirements",
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
@@ -280,8 +279,8 @@ private fun ResearchCard(
         Spacer(modifier = Modifier.height(3.dp))
 
         Text(
-            text = "• Qualification 1\n• Qualification 2\n• Qualification 3",
-            color = DarkText,
+            text = study.requirements.joinToString(separator = "\n") { "• $it" },
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 10.sp,
             lineHeight = 14.sp
         )
@@ -293,13 +292,13 @@ private fun ResearchCard(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(3.dp))
-                    .background(Blue)
+                    .background(MaterialTheme.colorScheme.secondary)
                     .clickable { onReadMore() }
                     .padding(horizontal = 9.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = "Read More",
-                    color = White,
+                    color = MaterialTheme.colorScheme.onSecondary,
                     fontSize = 9.sp
                 )
             }
@@ -322,13 +321,13 @@ private fun RowScope.BottomNavItem(
     ) {
         Text(
             text = symbol,
-            color = if (selected) White else Color(0xFFD5DCE8),
+            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimary.copy(alpha = .72f),
             fontSize = 22.sp
         )
 
         Text(
             text = label,
-            color = White,
+            color = MaterialTheme.colorScheme.onPrimary,
             fontSize = 9.sp,
             lineHeight = 10.sp
         )
