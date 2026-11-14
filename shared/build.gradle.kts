@@ -20,7 +20,7 @@ kotlin {
         }
     }
 
-    // Desktop (JVM) target: used to run and preview the app quickly.
+    // Desktop (JVM) target: used to run and demo the app quickly.
     jvm()
 
     android {
@@ -63,7 +63,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
 
-            // Networking (Week 3: Supabase REST API)
+            // Networking (Supabase Auth + REST API)
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.contentNegotiation)
             implementation(libs.ktor.serialization.kotlinxJson)
@@ -71,6 +71,7 @@ kotlin {
 
             // Dependency injection
             implementation(libs.koin.core)
+            implementation(libs.koin.coreViewmodel)
             implementation(libs.koin.compose)
             implementation(libs.koin.composeViewmodel)
 
@@ -91,6 +92,7 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
         jvmMain.dependencies {
+            implementation(compose.desktop.currentOs)       // desktop window
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.ktor.client.okhttp)
         }
