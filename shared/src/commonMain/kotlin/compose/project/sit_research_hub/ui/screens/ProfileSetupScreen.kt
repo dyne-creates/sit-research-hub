@@ -40,7 +40,11 @@ private val Programs = listOf("BSIT", "BSCS", "BSCPE", "ACT-MM")
 private val Years = listOf("1st Year", "2nd Year", "3rd Year", "4th Year")
 
 @Composable
-fun ProfileSetupScreen(onContinue: (program: String, yearLevel: String) -> Unit) {
+fun ProfileSetupScreen(
+    onContinue: (program: String, yearLevel: String) -> Unit,
+    isSaving: Boolean = false,
+    externalError: String? = null
+) {
     var program by remember { mutableStateOf<String?>(null) }
     var year by remember { mutableStateOf<String?>(null) }
     var consent by remember { mutableStateOf(false) }
@@ -66,11 +70,12 @@ fun ProfileSetupScreen(onContinue: (program: String, yearLevel: String) -> Unit)
                     Checkbox(checked = consent, onCheckedChange = { consent = it })
                     Text("I agree to the Privacy Policy and Data Collection Terms.", modifier = Modifier.padding(start = 8.dp))
                 }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                (externalError ?: error)?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 Button(
+                    enabled = !isSaving,
                     onClick = { if (program == null || year == null || !consent) error = "Select your program, year level, and consent to continue." else { error = null; onContinue(program!!, year!!) } },
                     modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) { Text("Continue to Home") }
+                ) { Text(if (isSaving) "Saving profile…" else "Continue to Home") }
             }
         }
     }

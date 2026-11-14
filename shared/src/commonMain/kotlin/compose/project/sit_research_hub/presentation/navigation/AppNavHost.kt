@@ -8,36 +8,25 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import compose.project.sit_research_hub.ui.screens.HomeScreen
-import compose.project.sit_research_hub.ui.screens.ProfileSetupScreen
 import compose.project.sit_research_hub.ui.screens.SettingsScreen
 import compose.project.sit_research_hub.ui.screens.StudyDetailScreen
 import compose.project.sit_research_hub.presentation.settings.SettingsViewModel
 import compose.project.sit_research_hub.presentation.home.HomeViewModel
-import compose.project.sit_research_hub.domain.model.StudentProfile
+import compose.project.sit_research_hub.domain.model.User
 
 @Composable
-fun AppNavHost(settingsViewModel: SettingsViewModel, homeViewModel: HomeViewModel) {
+fun AppNavHost(
+    settingsViewModel: SettingsViewModel,
+    homeViewModel: HomeViewModel,
+    user: User,
+    onSignOut: () -> Unit
+) {
     val navController = rememberNavController()
-    val settings by settingsViewModel.settings.collectAsState()
 
     NavHost(
         navController = navController,
-        startDestination = Destination.PERSONALIZATION
+        startDestination = Destination.HOME
     ) {
-        // Welcome / Personalization Screen
-        composable(Destination.PERSONALIZATION) {
-            ProfileSetupScreen(
-                onContinue = { program, yearLevel ->
-                    homeViewModel.updateProfile(StudentProfile(program, yearLevel))
-                    navController.navigate(Destination.HOME) {
-                        popUpTo(Destination.PERSONALIZATION) {
-                            inclusive = true
-                        }
-                    }
-                }
-            )
-        }
-
         // Home / Research Hub Screen
         composable(Destination.HOME) {
             HomeScreen(
@@ -68,6 +57,8 @@ fun AppNavHost(settingsViewModel: SettingsViewModel, homeViewModel: HomeViewMode
         composable(Destination.SETTINGS) {
             SettingsScreen(
                 viewModel = settingsViewModel,
+                accountEmail = user.email,
+                onSignOut = onSignOut,
                 onBackClick = {
                     navController.popBackStack()
                 }

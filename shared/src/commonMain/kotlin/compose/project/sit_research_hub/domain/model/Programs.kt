@@ -1,5 +1,11 @@
 package compose.project.sit_research_hub.domain.model
 
-val programs = listOf("BS Information Technology", "BS Computer Science", "BS Information Systems")
-val yearLevels = listOf("1st Year", "2nd Year", "3rd Year", "4th Year")
-
+object Programs {
+    val options: List<String> = listOf(
+        "BSIT",
+        "BSCS",
+        "BSCPE",
+        "ACT-MM"
+    )
+    val yearLevels: List<Int> = listOf(1, 2, 3, 4)
+}

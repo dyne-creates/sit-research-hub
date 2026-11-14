@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,7 +33,7 @@ import compose.project.sit_research_hub.domain.model.ThemeMode
 import compose.project.sit_research_hub.presentation.settings.SettingsViewModel
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onBackClick: () -> Unit) {
+fun SettingsScreen(viewModel: SettingsViewModel, onBackClick: () -> Unit, accountEmail: String = "", onSignOut: () -> Unit = {}) {
     val settings = viewModel.settings.collectAsState().value
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), horizontalAlignment = Alignment.CenterHorizontally) {
         Column(Modifier.fillMaxWidth().widthIn(max = 640.dp).weight(1f).background(MaterialTheme.colorScheme.surface)) {
@@ -49,6 +50,10 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBackClick: () -> Unit) {
                 Text("Information", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                 InfoRow("ⓘ", "Privacy policy")
                 InfoRow("ⓘ", "About Research hub")
+                if (accountEmail.isNotBlank()) {
+                    Text("Signed in as $accountEmail", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }
+                }
             }
             Row(Modifier.fillMaxWidth().height(68.dp).background(MaterialTheme.colorScheme.primary), verticalAlignment = Alignment.CenterVertically) {
                 BottomItem("⌂", "Home", false, onBackClick)
