@@ -6,23 +6,26 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "studies")
 data class StudyEntity(
     @PrimaryKey val id: String,
+    val ownerId: String,
+    val ownerName: String,
     val title: String,
-    val type: String,
     val description: String,
-    val researcherName: String,
-    val requirementsJson: String,
+    val studyType: String,
+    val requirements: String,
+    val programsJson: String,
+    val yearLevelsJson: String,
+    val isAnonymous: Boolean,
+    val oneResponse: Boolean,
+    val status: String,
     val questionsJson: String,
-    val createdAt: Long,
-    val allowedProgramsJson: String,
-    val allowedYearLevelsJson: String,
-    val oneResponsePerRespondent: Boolean,
-    val ownerId: String
+    val createdAt: String
 )
 
-@Entity(tableName = "submissions", primaryKeys = ["studyId", "respondentId"])
-data class SubmissionEntity(
+@Entity(tableName = "participations")
+data class ParticipationEntity(
+    @PrimaryKey val id: String,
     val studyId: String,
-    val respondentId: String,
-    val answersJson: String
+    val studyTitle: String,
+    val researcherName: String,
+    val createdAt: String
 )
-

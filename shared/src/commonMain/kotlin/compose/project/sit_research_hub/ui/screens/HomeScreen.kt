@@ -41,17 +41,21 @@ import androidx.compose.runtime.collectAsState
 import compose.project.sit_research_hub.domain.model.Study
 import compose.project.sit_research_hub.domain.model.StudyType
 import compose.project.sit_research_hub.presentation.home.HomeViewModel
+import compose.project.sit_research_hub.domain.model.AppResult
 
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
     onResearchClick: (String) -> Unit,
+    onCreateResearch: () -> Unit,
+    onYourResearchesClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf<String?>(null) }
     var eligibleOnly by remember { mutableStateOf(false) }
     val visibleStudies = viewModel.visibleStudies.collectAsState().value
+    val refreshResult = viewModel.refreshResult.collectAsState().value
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -85,6 +89,7 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .size(30.dp)
+                        .clickable(onClick = onCreateResearch)
                         .border(1.5.dp, MaterialTheme.colorScheme.onPrimary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -97,6 +102,10 @@ fun HomeScreen(
             }
 
             // SEARCH BAR
+            if (refreshResult is AppResult.Failure) {
+                Text("You are viewing saved studies offline. Pull to refresh when connected.",
+                    color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp))
+            }
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it; viewModel.updateQuery(it) },
@@ -160,13 +169,15 @@ fun HomeScreen(
                 BottomNavItem(
                     symbol = "◆",
                     label = "Home",
-                    selected = true
+                    selected = true,
+                    onClick = { }
                 )
 
                 BottomNavItem(
                     symbol = "▣",
                     label = "Your\nResearches",
-                    selected = false
+                    selected = false,
+                    onClick = onYourResearchesClick
                 )
 
                 Column(
@@ -279,7 +290,7 @@ private fun ResearchCard(
         Spacer(modifier = Modifier.height(3.dp))
 
         Text(
-            text = study.requirements.joinToString(separator = "\n") { "• $it" },
+            text = study.eligibility.description.ifBlank { "Open to eligible students" },
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 10.sp,
             lineHeight = 14.sp
@@ -310,12 +321,14 @@ private fun ResearchCard(
 private fun RowScope.BottomNavItem(
     symbol: String,
     label: String,
-    selected: Boolean
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .weight(1f)
-            .fillMaxSize(),
+            .fillMaxSize()
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

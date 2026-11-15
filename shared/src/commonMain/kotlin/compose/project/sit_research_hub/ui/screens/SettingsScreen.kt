@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -33,7 +34,7 @@ import compose.project.sit_research_hub.domain.model.ThemeMode
 import compose.project.sit_research_hub.presentation.settings.SettingsViewModel
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onBackClick: () -> Unit, accountEmail: String = "", onSignOut: () -> Unit = {}) {
+fun SettingsScreen(viewModel: SettingsViewModel, onBackClick: () -> Unit, accountEmail: String = "", onSignOut: () -> Unit = {}, onMyResponses: () -> Unit = {}) {
     val settings = viewModel.settings.collectAsState().value
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), horizontalAlignment = Alignment.CenterHorizontally) {
         Column(Modifier.fillMaxWidth().widthIn(max = 640.dp).weight(1f).background(MaterialTheme.colorScheme.surface)) {
@@ -41,6 +42,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBackClick: () -> Unit, accoun
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text("Theme", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ChoiceButton("System", settings.themeMode == ThemeMode.SYSTEM) { viewModel.setTheme(ThemeMode.SYSTEM) }
                     ChoiceButton("Dark", settings.themeMode == ThemeMode.DARK) { viewModel.setTheme(ThemeMode.DARK) }
                     ChoiceButton("Light", settings.themeMode == ThemeMode.LIGHT) { viewModel.setTheme(ThemeMode.LIGHT) }
                 }
@@ -50,6 +52,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBackClick: () -> Unit, accoun
                 Text("Information", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                 InfoRow("ⓘ", "Privacy policy")
                 InfoRow("ⓘ", "About Research hub")
+                OutlinedButton(onClick = onMyResponses, modifier = Modifier.fillMaxWidth()) { Text("My Responses") }
                 if (accountEmail.isNotBlank()) {
                     Text("Signed in as $accountEmail", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }

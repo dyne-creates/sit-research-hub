@@ -5,6 +5,10 @@ object Destination {
     const val HOME = "home"
     const val RESEARCH_DETAILS = "research_details/{researchId}"
     const val SETTINGS = "settings"
+    const val YOUR_RESEARCHES = "your_researches"
+    const val ADD_RESEARCH = "add_research"
+    const val RESEARCH_SUMMARY = "research_summary"
+    const val MY_RESPONSES = "my_responses"
 
     fun researchDetails(researchId: String): String {
         return "research_details/$researchId"

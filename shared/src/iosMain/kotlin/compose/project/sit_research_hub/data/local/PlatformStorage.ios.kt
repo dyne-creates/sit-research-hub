@@ -11,7 +11,7 @@ import platform.Foundation.NSUserDefaults
 actual class PreferencesStore {
     private val defaults = NSUserDefaults.standardUserDefaults
     actual fun readSettings() = AppSettings(
-        if (defaults.stringForKey("theme") == ThemeMode.DARK.name) ThemeMode.DARK else ThemeMode.LIGHT,
+        defaults.stringForKey("theme")?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
         if (defaults.stringForKey("sort") == SortOrder.TITLE_A_TO_Z.name) SortOrder.TITLE_A_TO_Z else SortOrder.NEWEST_FIRST
     )
     actual fun writeSettings(settings: AppSettings) {
@@ -49,6 +49,12 @@ actual class PreferencesStore {
             .forEach { defaults.removeObjectForKey(it) }
     }
 }
-actual fun createAppDatabase(): AppDatabase = Room.inMemoryDatabaseBuilder<AppDatabase>()
-    .setDriver(BundledSQLiteDriver())
-    .build()
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+actual fun createAppDatabase(): AppDatabase {
+    val documents = platform.Foundation.NSFileManager.defaultManager.URLForDirectory(
+        platform.Foundation.NSDocumentDirectory, platform.Foundation.NSUserDomainMask,
+        null, false, null
+    ) ?: error("Could not open the app documents directory")
+    val path = requireNotNull(documents.path) + "/" + DATABASE_FILE
+    return buildAppDatabase(Room.databaseBuilder<AppDatabase>(path))
+}

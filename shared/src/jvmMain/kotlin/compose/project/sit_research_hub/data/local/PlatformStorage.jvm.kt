@@ -12,7 +12,7 @@ actual class PreferencesStore {
     private val prefs = Preferences.userRoot().node("sit-research-hub")
     private val sessionPrefs = prefs.node("session")
     actual fun readSettings() = AppSettings(
-        if (prefs.get("theme", ThemeMode.LIGHT.name) == ThemeMode.DARK.name) ThemeMode.DARK else ThemeMode.LIGHT,
+        runCatching { ThemeMode.valueOf(prefs.get("theme", ThemeMode.SYSTEM.name)) }.getOrDefault(ThemeMode.SYSTEM),
         if (prefs.get("sort", SortOrder.NEWEST_FIRST.name) == SortOrder.TITLE_A_TO_Z.name) SortOrder.TITLE_A_TO_Z else SortOrder.NEWEST_FIRST
     )
     actual fun writeSettings(settings: AppSettings) {
@@ -50,6 +50,7 @@ actual class PreferencesStore {
             .forEach(sessionPrefs::remove)
     }
 }
-actual fun createAppDatabase(): AppDatabase = Room.inMemoryDatabaseBuilder<AppDatabase>()
-    .setDriver(BundledSQLiteDriver())
-    .build()
+actual fun createAppDatabase(): AppDatabase {
+    val directory = java.io.File(System.getProperty("user.home"), ".sit-research-hub").apply { mkdirs() }
+    return buildAppDatabase(Room.databaseBuilder<AppDatabase>(java.io.File(directory, DATABASE_FILE).absolutePath))
+}

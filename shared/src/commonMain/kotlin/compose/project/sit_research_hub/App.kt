@@ -3,14 +3,13 @@ package compose.project.sit_research_hub
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.Modifier
-import compose.project.sit_research_hub.data.repository.SettingsRepositoryImpl
-import compose.project.sit_research_hub.data.repository.StudyRepositoryImpl
 import compose.project.sit_research_hub.domain.model.ThemeMode
-import compose.project.sit_research_hub.di.platformDatabase
 import compose.project.sit_research_hub.domain.usecase.FilterStudiesUseCase
 import compose.project.sit_research_hub.presentation.home.HomeViewModel
 import compose.project.sit_research_hub.presentation.settings.SettingsViewModel
@@ -26,20 +25,30 @@ import compose.project.sit_research_hub.ui.screens.ProfileSetupScreen
 import compose.project.sit_research_hub.domain.repository.GoogleIdTokenProvider
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.compose.koinInject
+import kotlinx.coroutines.launch
+import compose.project.sit_research_hub.domain.repository.StudyRepository
+import compose.project.sit_research_hub.domain.repository.SettingsRepository
 
 @Composable
 fun App(googleIdTokenProvider: GoogleIdTokenProvider) {
-    val preferences = koinInject<compose.project.sit_research_hub.data.local.PreferencesStore>()
     val authViewModel = koinViewModel<AuthViewModel>()
     val authState = authViewModel.authState.collectAsState().value
     val authUiState = authViewModel.uiState.collectAsState().value
-    val settingsRepository = remember(preferences) { SettingsRepositoryImpl(preferences) }
+    val settingsRepository = koinInject<SettingsRepository>()
+    val studyRepository = koinInject<StudyRepository>()
+    val localDataCleaner = koinInject<compose.project.sit_research_hub.data.repository.RoomLocalDataCleaner>()
+    val coroutineScope = rememberCoroutineScope()
     val settingsViewModel = remember(settingsRepository) { SettingsViewModel(settingsRepository) }
     val homeViewModel = remember(settingsRepository) {
-        HomeViewModel(StudyRepositoryImpl(platformDatabase()), settingsRepository, FilterStudiesUseCase())
+        HomeViewModel(studyRepository, settingsRepository, FilterStudiesUseCase())
     }
     val settings = settingsViewModel.settings.collectAsState().value
-    ResearchHubTheme(darkTheme = settings.themeMode == ThemeMode.DARK) {
+    val darkTheme = when (settings.themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+    ResearchHubTheme(darkTheme = darkTheme) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = androidx.compose.material3.MaterialTheme.colorScheme.background,
@@ -61,8 +70,16 @@ fun App(googleIdTokenProvider: GoogleIdTokenProvider) {
                     }
                 )
                 is AuthState.SignedIn -> {
-                    LaunchedEffect(state.profile) { homeViewModel.updateProfile(state.profile) }
-                    AppNavHost(settingsViewModel, homeViewModel, state.user, authViewModel::signOut)
+                    LaunchedEffect(state.user.id, state.profile) {
+                        homeViewModel.updateProfile(state.profile)
+                        homeViewModel.refresh()
+                    }
+                    AppNavHost(settingsViewModel, homeViewModel, state.user, state.profile, {
+                        coroutineScope.launch {
+                            localDataCleaner.clear()
+                            authViewModel.signOut()
+                        }
+                    })
                 }
             }
         }

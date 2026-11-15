@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import compose.project.sit_research_hub.domain.model.AppResult
 
 data class HomeFilters(
     val query: String = "",
@@ -21,16 +23,20 @@ data class HomeFilters(
 )
 
 class HomeViewModel(
-    studies: StudyRepository,
+    private val studies: StudyRepository,
     settings: SettingsRepository,
     private val filterStudies: FilterStudiesUseCase
 ) : ViewModel() {
+    private val _refreshResult = MutableStateFlow<AppResult<Unit>?>(null)
+    val refreshResult: StateFlow<AppResult<Unit>?> = _refreshResult
     private val filters = MutableStateFlow(HomeFilters())
     private val profile = MutableStateFlow<StudentProfile?>(null)
 
     val visibleStudies: StateFlow<List<Study>> = combine(studies.observeStudies(), settings.settings, filters, profile) { all, appSettings, currentFilters, currentProfile ->
         filterStudies(all, currentFilters.query, currentFilters.type, currentFilters.eligibleOnly, appSettings.sortOrder, currentProfile)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun refresh() { viewModelScope.launch { _refreshResult.value = studies.refresh() } }
 
     fun updateQuery(query: String) { filters.value = filters.value.copy(query = query) }
     fun updateType(type: StudyType?) { filters.value = filters.value.copy(type = type) }

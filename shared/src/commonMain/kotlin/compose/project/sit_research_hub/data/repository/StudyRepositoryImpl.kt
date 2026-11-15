@@ -1,46 +1,48 @@
 package compose.project.sit_research_hub.data.repository
 
-import compose.project.sit_research_hub.data.local.AppDatabase
-import compose.project.sit_research_hub.domain.model.Question
-import compose.project.sit_research_hub.domain.model.QuestionType
-import compose.project.sit_research_hub.domain.model.Study
-import compose.project.sit_research_hub.domain.model.StudyType
+import compose.project.sit_research_hub.data.local.StudyDao
+import compose.project.sit_research_hub.data.mapper.*
+import compose.project.sit_research_hub.data.remote.StudyApi
+import compose.project.sit_research_hub.data.remote.safeApiCall
+import compose.project.sit_research_hub.domain.model.*
 import compose.project.sit_research_hub.domain.repository.StudyRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-class StudyRepositoryImpl(private val database: AppDatabase) : StudyRepository {
-    private val studies = listOf(
-        Study(
-            id = "1", title = "Study Habits of SIT Students", type = StudyType.QUALITATIVE,
-            description = "This study explores how SIT students plan and complete their academic work.",
-            researcherName = "SIT Research Team",
-            requirements = listOf("SIT student", "Any year level", "Willing to share study habits"),
-            questions = listOf(
-                Question("1a", "What usually helps you study effectively?", QuestionType.LONG_ANSWER),
-                Question("1b", "How often do you study outside class?", QuestionType.SINGLE_CHOICE, options = listOf("Every day", "Several times a week", "Rarely"))
-            ), createdAt = 2L
-        ),
-        Study(
-            id = "2", title = "Preferred Development Tools", type = StudyType.QUANTITATIVE,
-            description = "A short survey about the tools SIT students use for programming activities.",
-            researcherName = "SIT Research Team",
-            requirements = listOf("BS Information Technology student", "2nd Year or higher"),
-            questions = listOf(
-                Question("2a", "Which tool do you use most often?", QuestionType.SINGLE_CHOICE, options = listOf("Android Studio", "IntelliJ IDEA", "Visual Studio Code")),
-                Question("2b", "Rate your confidence with development tools.", QuestionType.RATING)
-            ), createdAt = 1L,
-            allowedPrograms = setOf("BS Information Technology"),
-            allowedYearLevels = setOf("2nd Year", "3rd Year", "4th Year")
-        )
-    )
-    private val state = MutableStateFlow(studies)
-    init { seedIfNeeded() }
-    private fun seedIfNeeded() {
-        // The Room-backed repository is initialized by AppContainer. The seed is kept
-        // here so Week 2 remains deterministic without any network dependency.
-        state.value = studies
-    }
-    override fun observeStudies(): Flow<List<Study>> = state
-    override fun findById(id: String): Study? = studies.firstOrNull { it.id == id }
-}
+import kotlinx.coroutines.flow.map
 
+class StudyRepositoryImpl(private val api: StudyApi, private val dao: StudyDao) : StudyRepository {
+    override fun observeStudies(): Flow<List<Study>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+
+    override suspend fun refresh(): AppResult<Unit> = when (val result = safeApiCall { api.list() }) {
+        is AppResult.Failure -> result
+        is AppResult.Success -> {
+            val rows = result.data.map { it.toEntity() }
+            if (rows.isNotEmpty()) dao.upsertAll(rows)
+            if (rows.isEmpty()) dao.deleteAll() else dao.deleteNotIn(rows.map { it.id })
+            AppResult.Success(Unit)
+        }
+    }
+
+    override suspend fun getStudy(id: String): AppResult<Study> {
+        dao.getById(id)?.let { return AppResult.Success(it.toDomain()) }
+        return when (val result = safeApiCall { api.get(id) }) {
+            is AppResult.Failure -> result
+            is AppResult.Success -> {
+                val dto = result.data ?: return AppResult.Failure(ConflictException("This study is no longer available."))
+                dao.upsert(dto.toEntity()); AppResult.Success(dto.toDomain())
+            }
+        }
+    }
+
+    override suspend fun saveStudy(study: Study): AppResult<Study> = when (val result = safeApiCall { api.create(study.toNewDto()) }) {
+        is AppResult.Failure -> result
+        is AppResult.Success -> { dao.upsert(result.data.toEntity()); AppResult.Success(result.data.toDomain()) }
+    }
+
+    override suspend fun setStatus(id: String, status: StudyStatus): AppResult<Unit> = when (val result = safeApiCall { api.setStatus(id, status.name) }) {
+        is AppResult.Failure -> result
+        is AppResult.Success -> {
+            val dto = result.data ?: return AppResult.Failure(AuthException("You can only change your own research."))
+            dao.upsert(dto.toEntity()); AppResult.Success(Unit)
+        }
+    }
+}

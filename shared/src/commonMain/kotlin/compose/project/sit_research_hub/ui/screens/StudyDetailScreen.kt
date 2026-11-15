@@ -1,87 +1,174 @@
 package compose.project.sit_research_hub.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import compose.project.sit_research_hub.domain.model.*
+import compose.project.sit_research_hub.domain.repository.StudyRepository
+import compose.project.sit_research_hub.domain.repository.InterviewRepository
+import compose.project.sit_research_hub.domain.usecase.SubmitResponseUseCase
+import compose.project.sit_research_hub.domain.usecase.CreateInterviewSlotUseCase
+import compose.project.sit_research_hub.domain.usecase.ChooseInterviewSlotUseCase
+import org.koin.compose.koinInject
+import kotlinx.coroutines.launch
 
 @Composable
-fun StudyDetailScreen(researchId: String, onBackClick: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), horizontalAlignment = Alignment.CenterHorizontally) {
-        Column(Modifier.fillMaxWidth().widthIn(max = 760.dp).weight(1f).background(MaterialTheme.colorScheme.surface)) {
-            Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("←", color = MaterialTheme.colorScheme.onPrimary, fontSize = 30.sp, modifier = Modifier.clickable(onClick = onBackClick))
-                Spacer(Modifier.width(16.dp))
-                Text("Research Title", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+fun StudyDetailScreen(
+    researchId: String,
+    userId: String,
+    profile: StudentProfile,
+    onBackClick: () -> Unit
+) {
+    val studies = koinInject<StudyRepository>()
+    val submit = koinInject<SubmitResponseUseCase>()
+    val interviews = koinInject<InterviewRepository>()
+    val createSlot = koinInject<CreateInterviewSlotUseCase>()
+    val chooseSlot = koinInject<ChooseInterviewSlotUseCase>()
+    val scope = rememberCoroutineScope()
+    var study by remember(researchId) { mutableStateOf<Study?>(null) }
+    var loadError by remember(researchId) { mutableStateOf<String?>(null) }
+    var message by remember(researchId) { mutableStateOf<String?>(null) }
+    var sending by remember { mutableStateOf(false) }
+    var slots by remember(researchId) { mutableStateOf<List<InterviewSlot>>(emptyList()) }
+    var interviewDate by remember { mutableStateOf("") }
+    var interviewTime by remember { mutableStateOf("") }
+    var interviewLocation by remember { mutableStateOf("") }
+    val answers = remember(researchId) { mutableStateMapOf<String, List<String>>() }
+
+    LaunchedEffect(researchId) {
+        when (val result = studies.getStudy(researchId)) {
+            is AppResult.Success -> {
+                study = result.data
+                if (result.data.type == StudyType.QUALITATIVE) {
+                    when (val slotResult = interviews.slots(researchId)) {
+                        is AppResult.Success -> slots = slotResult.data
+                        is AppResult.Failure -> message = slotResult.error.message
+                    }
+                }
             }
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    DetailTag("Qualitative", true)
-                    DetailTag("Quantitative", false)
+            is AppResult.Failure -> loadError = result.error.message
+        }
+    }
+
+    Column(Modifier.fillMaxSize().padding(16.dp)) {
+        TextButton(onClick = onBackClick) { Text("← Back") }
+        val item = study
+        if (item == null) {
+            Text(loadError ?: "Loading study…", style = MaterialTheme.typography.bodyLarge)
+        } else {
+            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(item.title, style = MaterialTheme.typography.headlineSmall)
+                Text("${item.type.label} · ${item.ownerName}", style = MaterialTheme.typography.labelLarge)
+                Text(item.description)
+                if (item.eligibility.description.isNotBlank()) Text("Requirements: ${item.eligibility.description}")
+                if (item.isAnonymous) Text("Your answers are anonymous.", color = MaterialTheme.colorScheme.primary)
+                item.questions.forEachIndexed { index, question ->
+                    ElevatedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("${index + 1}. ${question.text}${if (question.isRequired) " *" else ""}", style = MaterialTheme.typography.titleMedium)
+                            when (question.type) {
+                                QuestionType.MULTIPLE_CHOICE -> question.options.forEach { option ->
+                                    Row(Modifier.fillMaxWidth().clickable { answers[question.id] = listOf(option) }, horizontalArrangement = Arrangement.Start) {
+                                        RadioButton(answers[question.id]?.contains(option) == true, onClick = { answers[question.id] = listOf(option) })
+                                        Text(option, Modifier.padding(top = 12.dp))
+                                    }
+                                }
+                                QuestionType.CHECKBOX -> question.options.forEach { option ->
+                                    val selected = option in answers[question.id].orEmpty()
+                                    Row(Modifier.fillMaxWidth().clickable {
+                                        answers[question.id] = if (selected) answers[question.id].orEmpty() - option else answers[question.id].orEmpty() + option
+                                    }) {
+                                        Checkbox(selected, onCheckedChange = { checked ->
+                                            answers[question.id] = if (checked) answers[question.id].orEmpty() + option else answers[question.id].orEmpty() - option
+                                        })
+                                        Text(option, Modifier.padding(top = 12.dp))
+                                    }
+                                }
+                                QuestionType.RATING_SCALE -> Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    (1..question.ratingMax).forEach { value ->
+                                        FilterChip(answers[question.id]?.firstOrNull() == value.toString(), onClick = { answers[question.id] = listOf(value.toString()) }, label = { Text(value.toString()) })
+                                    }
+                                }
+                                QuestionType.SHORT_ANSWER -> OutlinedTextField(
+                                    value = answers[question.id]?.firstOrNull().orEmpty(),
+                                    onValueChange = { answers[question.id] = listOf(it) }, modifier = Modifier.fillMaxWidth(), singleLine = true
+                                )
+                                QuestionType.PARAGRAPH -> OutlinedTextField(
+                                    value = answers[question.id]?.firstOrNull().orEmpty(),
+                                    onValueChange = { answers[question.id] = listOf(it) }, modifier = Modifier.fillMaxWidth(), minLines = 3
+                                )
+                            }
+                        }
+                    }
                 }
-                DetailCard {
-                    Text("Research Title", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                    Text("Add Description", color = MaterialTheme.colorScheme.onSurface)
-                    Text("Researchers", color = MaterialTheme.colorScheme.onSurface)
-                    Text("Respondents Qualification", color = MaterialTheme.colorScheme.onSurface)
+                if (item.type == StudyType.QUALITATIVE) {
+                    ElevatedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Interview schedule", style = MaterialTheme.typography.titleMedium)
+                            if (isOwner(item, userId)) {
+                                OutlinedTextField(interviewDate, { interviewDate = it }, Modifier.fillMaxWidth(), label = { Text("Date (YYYY-MM-DD)") })
+                                OutlinedTextField(interviewTime, { interviewTime = it }, Modifier.fillMaxWidth(), label = { Text("Time (HH:MM)") })
+                                OutlinedTextField(interviewLocation, { interviewLocation = it }, Modifier.fillMaxWidth(), label = { Text("Location or meeting link") })
+                                Button(onClick = {
+                                    scope.launch {
+                                        when (val result = createSlot(item, interviewDate, interviewTime, interviewLocation, "")) {
+                                            is AppResult.Success -> { slots = slots + result.data; message = "Interview slot added." }
+                                            is AppResult.Failure -> message = result.error.message
+                                        }
+                                    }
+                                }) { Text("Add interview slot") }
+                            }
+                            if (slots.isEmpty()) Text("No interview times are available yet.")
+                            slots.forEach { slot ->
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(slot.startsAt.replace('T', ' '))
+                                        Text(slot.location, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    if (!isOwner(item, userId) && slot.isAvailable) TextButton(onClick = {
+                                        scope.launch {
+                                            when (val result = chooseSlot(item, userId, slot, slots)) {
+                                                is AppResult.Success -> {
+                                                    when (val latest = interviews.slots(researchId)) {
+                                                        is AppResult.Success -> slots = latest.data
+                                                        is AppResult.Failure -> message = latest.error.message
+                                                    }
+                                                    message = "Interview time selected."
+                                                }
+                                                is AppResult.Failure -> message = result.error.message
+                                            }
+                                        }
+                                    }) { Text("Choose") }
+                                    else if (!slot.isAvailable) Text("Booked", style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                        }
+                    }
                 }
-                DetailCard {
-                    Text("Interview Schedule", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                    ScheduleLine("Date")
-                    ScheduleLine("Time")
-                    ScheduleLine("Room")
-                    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.secondary).padding(vertical = 12.dp), contentAlignment = Alignment.Center) { Text("Choose Schedule", color = MaterialTheme.colorScheme.onSecondary, fontWeight = FontWeight.Medium) }
-                }
-                DetailCard {
-                    Text("Email", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                    Text("Required field for contact purposes", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                    Spacer(Modifier.height(12.dp))
-                    Box(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.outline))
-                }
-                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.secondary).clickable { }.padding(vertical = 13.dp), contentAlignment = Alignment.Center) { Text("Submit", color = MaterialTheme.colorScheme.onSecondary, fontWeight = FontWeight.Bold) }
+                message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
             }
+            val isOwner = item.ownerId == userId
+            Button(
+                enabled = !sending && !isOwner && item.status == StudyStatus.PUBLISHED,
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                onClick = {
+                    scope.launch {
+                        sending = true
+                        when (val result = submit(item, userId, profile, answers.toMap())) {
+                            is AppResult.Success -> message = "Your response was submitted."
+                            is AppResult.Failure -> message = result.error.message
+                        }
+                        sending = false
+                    }
+                }
+            ) { Text(if (sending) "Submitting…" else if (isOwner) "You own this study" else "Submit response") }
         }
     }
 }
 
-@Composable
-private fun DetailCard(content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth().border(1.5.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(14.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
-}
-
-@Composable
-private fun DetailTag(label: String, selected: Boolean) {
-    Text(label, modifier = Modifier.clip(RoundedCornerShape(7.dp)).background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface).border(1.dp, MaterialTheme.colorScheme.secondary, RoundedCornerShape(7.dp)).padding(horizontal = 14.dp, vertical = 9.dp), color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
-}
-
-@Composable
-private fun ScheduleLine(label: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("•", color = MaterialTheme.colorScheme.secondary)
-        Text(label, color = MaterialTheme.colorScheme.onSurface)
-    }
-}
+private fun isOwner(study: Study, userId: String) = study.ownerId == userId

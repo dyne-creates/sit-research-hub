@@ -32,7 +32,7 @@ actual class PreferencesStore {
     actual fun readSettings(): AppSettings = runBlocking {
         val values = AndroidPlatformContext.application.settingsDataStore.data.first()
         AppSettings(
-            themeMode = if (values[themeKey] == ThemeMode.DARK.name) ThemeMode.DARK else ThemeMode.LIGHT,
+            themeMode = values[themeKey]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
             sortOrder = if (values[sortKey] == SortOrder.TITLE_A_TO_Z.name) SortOrder.TITLE_A_TO_Z else SortOrder.NEWEST_FIRST
         )
     }
@@ -102,8 +102,7 @@ actual class PreferencesStore {
     }
 }
 
-actual fun createAppDatabase(): AppDatabase = Room.databaseBuilder<AppDatabase>(
-    AndroidPlatformContext.application,
-    "research-hub.db"
-).setDriver(BundledSQLiteDriver()).build()
+actual fun createAppDatabase(): AppDatabase = buildAppDatabase(
+    Room.databaseBuilder<AppDatabase>(AndroidPlatformContext.application, DATABASE_FILE)
+)
 
