@@ -26,6 +26,11 @@
 | TC-020 | Select Submit from research detail screen. | Form submission process starts or validation appears. |
 | TC-021 | Select Choose Schedule. | Available interview schedules appear. |
 | TC-022 | View Your Researches label in bottom navigation. | Label remains centered below icon. |
+| TC-023 | Sign in with a university Google account without an app account. | App shows an error directing user to Sign Up. |
+| TC-024 | Sign up with a new university Google account. | Google Sign Up succeeds and Profile Setup opens. |
+| TC-025 | Complete Profile Setup with program and year level. | Home screen opens. |
+| TC-026 | Sign out from signed-in account. | App returns to authentication screen. |
+| TC-027 | Sign up again using an existing university Google account. | App shows an account-already-exists error and directs user to Sign In. |
 
 ## Week 2 Test Execution Record
 
@@ -53,6 +58,11 @@
 | TC-020 | Submit button has no action. | Blocked | BUG-002 |
 | TC-021 | Choose Schedule button has no action. | Blocked | BUG-003 |
 | TC-022 | Your Researches label wraps with uneven alignment. | Fail | BUG-007 |
+| TC-023 | App displayed an error directing new user to Sign Up. | Pass | |
+| TC-024 | Google Sign Up succeeded and opened Profile Setup. | Pass | |
+| TC-025 | Home screen opened after program and year-level setup. | Pass | |
+| TC-026 | Sign Out returned user to authentication screen. | Pass | |
+| TC-027 | App displayed an error explaining account already exists and directs user to Sign In. | Pass | |
 
 ## Status Definitions
 
