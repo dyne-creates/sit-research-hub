@@ -20,13 +20,19 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,14 +40,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.collectAsState
+import compose.project.sit_research_hub.domain.model.AppResult
 import compose.project.sit_research_hub.domain.model.Study
 import compose.project.sit_research_hub.domain.model.StudyType
 import compose.project.sit_research_hub.presentation.home.HomeViewModel
-import compose.project.sit_research_hub.domain.model.AppResult
 
 @Composable
 fun HomeScreen(
@@ -54,8 +57,10 @@ fun HomeScreen(
     var query by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf<String?>(null) }
     var eligibleOnly by remember { mutableStateOf(false) }
+
     val visibleStudies = viewModel.visibleStudies.collectAsState().value
     val refreshResult = viewModel.refreshResult.collectAsState().value
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -67,138 +72,351 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .widthIn(max = 760.dp)
                 .weight(1f)
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.background)
         ) {
+
             // HEADER
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp)
                     .background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Research Hub",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clickable(onClick = onCreateResearch)
-                        .border(1.5.dp, MaterialTheme.colorScheme.onPrimary, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "♙",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 21.sp
-                    )
-                }
-            }
-
-            // SEARCH BAR
-            if (refreshResult is AppResult.Failure) {
-                Text("You are viewing saved studies offline. Pull to refresh when connected.",
-                    color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp))
-            }
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it; viewModel.updateQuery(it) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
-                singleLine = true,
-                label = { Text("Search studies") }
-            )
-
-            // RESEARCH FILTERS
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, top = 9.dp),
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FilterChip("All", selectedType == null) { selectedType = null; viewModel.updateType(null) }
+                Column {
+                    Text(
+                        text = "Research Hub",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
 
-                Spacer(modifier = Modifier.width(5.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
 
-                FilterChip("Qualitative", selectedType == "Qualitative") { selectedType = "Qualitative"; viewModel.updateType(StudyType.QUALITATIVE) }
+                    Text(
+                        text = "Discover and participate in student research",
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                        fontSize = 11.sp
+                    )
+                }
 
-                Spacer(modifier = Modifier.width(5.dp))
+                // PROFILE BUTTON
+                IconButton(
+                    onClick = onCreateResearch,
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f)
+                        )
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
+                            CircleShape
+                        )
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        // Profile head
+                        Box(
+                            modifier = Modifier
+                                .size(11.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.onPrimary)
+                        )
 
-                FilterChip("Quantitative", selectedType == "Quantitative") { selectedType = "Quantitative"; viewModel.updateType(StudyType.QUANTITATIVE) }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Checkbox(checked = eligibleOnly, onCheckedChange = { eligibleOnly = it; viewModel.updateEligibleOnly(it) })
-                Text("Eligible", color = MaterialTheme.colorScheme.onSurface, fontSize = 11.sp)
-            }
-
-            // RESEARCH CARDS
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (visibleStudies.isEmpty()) {
-                    Text("No studies match your search or filters.", color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(16.dp))
-                } else {
-                    visibleStudies.forEach { study ->
-                        ResearchCard(study) {
-                            onResearchClick(study.id)
-                        }
+                        // Profile shoulders
+                        Box(
+                            modifier = Modifier
+                                .width(21.dp)
+                                .height(11.dp)
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = 12.dp,
+                                        topEnd = 12.dp
+                                    )
+                                )
+                                .background(MaterialTheme.colorScheme.onPrimary)
+                        )
                     }
                 }
+            }
+
+            // MAIN CONTENT
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
+            ) {
+                Text(
+                    text = "Explore studies",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(5.dp))
+
+                Text(
+                    text = "Find research studies that match your interests and eligibility.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // SEARCH
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = {
+                        query = it
+                        viewModel.updateQuery(it)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    placeholder = {
+                        Text("Search research studies...")
+                    },
+                    leadingIcon = {
+                        Text(
+                            text = "⌕",
+                            fontSize = 23.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // FILTERS
+                Text(
+                    text = "Research type",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Spacer(modifier = Modifier.height(9.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        text = "All",
+                        selected = selectedType == null
+                    ) {
+                        selectedType = null
+                        viewModel.updateType(null)
+                    }
+
+                    FilterChip(
+                        text = "Qualitative",
+                        selected = selectedType == "Qualitative"
+                    ) {
+                        selectedType = "Qualitative"
+                        viewModel.updateType(StudyType.QUALITATIVE)
+                    }
+
+                    FilterChip(
+                        text = "Quantitative",
+                        selected = selectedType == "Quantitative"
+                    ) {
+                        selectedType = "Quantitative"
+                        viewModel.updateType(StudyType.QUANTITATIVE)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ELIGIBILITY FILTER
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = eligibleOnly,
+                        onCheckedChange = {
+                            eligibleOnly = it
+                            viewModel.updateEligibleOnly(it)
+                        }
+                    )
+
+                    Column {
+                        Text(
+                            text = "Show eligible studies only",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Text(
+                            text = "Filter studies based on your eligibility",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // AVAILABLE STUDIES HEADER AND CREATE BUTTON
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Available studies",
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = "${visibleStudies.size} studies found",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(
+                        onClick = onCreateResearch,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 12.dp,
+                            vertical = 9.dp
+                        )
+                    ) {
+                        Text(
+                            text = "+ Create Research",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // OFFLINE MESSAGE
+                if (refreshResult is AppResult.Failure) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.tertiary)
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = "You're viewing saved studies offline. Some information may not be up to date.",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // STUDY CARDS
+                if (visibleStudies.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outlineVariant,
+                                RoundedCornerShape(14.dp)
+                            )
+                            .padding(horizontal = 20.dp, vertical = 28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "⌕",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 34.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "No studies found",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "Try changing your search or filters to find other studies.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp
+                        )
+                    }
+                } else {
+                    visibleStudies.forEach { study ->
+                        ResearchCard(study = study) {
+                            onResearchClick(study.id)
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             // BOTTOM NAVIGATION
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(62.dp)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .height(68.dp)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 BottomNavItem(
-                    symbol = "◆",
+                    symbol = "⌂",
                     label = "Home",
                     selected = true,
                     onClick = { }
                 )
 
                 BottomNavItem(
-                    symbol = "▣",
-                    label = "Your\nResearches",
+                    symbol = "▤",
+                    label = "Your Researches",
                     selected = false,
                     onClick = onYourResearchesClick
                 )
 
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize()
-                        .clickable { onSettingsClick() },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "⚙",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 23.sp
-                    )
-                    Text(
-                        text = "Settings",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 10.sp
-                    )
-                }
+                BottomNavItem(
+                    symbol = "⚙",
+                    label = "Settings",
+                    selected = false,
+                    onClick = onSettingsClick
+                )
             }
         }
     }
@@ -212,21 +430,26 @@ private fun FilterChip(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(5.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surface
+            )
             .border(
                 width = 1.dp,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                shape = RoundedCornerShape(5.dp)
+                color = if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(20.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 9.dp, vertical = 5.dp),
+            .padding(horizontal = 14.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
-            fontSize = 10.sp,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurface,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
     }
@@ -240,79 +463,82 @@ private fun ResearchCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(15.dp))
+            .background(MaterialTheme.colorScheme.surface)
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.secondary,
-                shape = RoundedCornerShape(13.dp)
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(15.dp)
             )
-            .clip(RoundedCornerShape(13.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(10.dp)
+            .clickable(onClick = onReadMore)
+            .padding(15.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
         ) {
             Text(
                 text = study.title,
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 16.sp,
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.width(7.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
             Box(
                 modifier = Modifier
-                    .background(
-                        MaterialTheme.colorScheme.tertiary,
-                        RoundedCornerShape(3.dp)
-                    )
-                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.tertiary)
+                    .padding(horizontal = 9.dp, vertical = 5.dp)
             ) {
                 Text(
                     text = study.type.name.lowercase().replaceFirstChar { it.uppercase() },
                     color = MaterialTheme.colorScheme.primary,
-                    fontSize = 8.sp
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
 
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
-            text = "Respondent requirements",
-            color = MaterialTheme.colorScheme.onSurface,
+            text = "RESPONDENT REQUIREMENTS",
+            color = MaterialTheme.colorScheme.primary,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.6.sp
+        )
+
+        Spacer(modifier = Modifier.height(5.dp))
+
+        Text(
+            text = study.eligibility.description.ifBlank {
+                "Open to eligible students"
+            },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp,
-            fontWeight = FontWeight.Medium
+            lineHeight = 17.sp
         )
 
-        Spacer(modifier = Modifier.height(3.dp))
-
-        Text(
-            text = study.eligibility.description.ifBlank { "Open to eligible students" },
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 10.sp,
-            lineHeight = 14.sp
-        )
+        Spacer(modifier = Modifier.height(14.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(MaterialTheme.colorScheme.secondary)
-                    .clickable { onReadMore() }
-                    .padding(horizontal = 9.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = "Read More",
-                    color = MaterialTheme.colorScheme.onSecondary,
-                    fontSize = 9.sp
-                )
-            }
+            Text(
+                text = "View study  →",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
@@ -328,21 +554,24 @@ private fun RowScope.BottomNavItem(
         modifier = Modifier
             .weight(1f)
             .fillMaxSize()
+            .clip(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = symbol,
-            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimary.copy(alpha = .72f),
-            fontSize = 22.sp
+            color = MaterialTheme.colorScheme.onPrimary,
+            fontSize = 21.sp
         )
 
         Text(
             text = label,
-            color = MaterialTheme.colorScheme.onPrimary,
-            fontSize = 9.sp,
-            lineHeight = 10.sp
+            color = MaterialTheme.colorScheme.onPrimary.copy(
+                alpha = if (selected) 1f else 0.72f
+            ),
+            fontSize = 10.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
         )
     }
 }
