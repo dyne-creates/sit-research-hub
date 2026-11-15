@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 interface AuthRepository {
     val authState: StateFlow<AuthState>
     suspend fun restoreSession()
+    suspend fun prepareGoogleSignIn(): AppResult<Unit>
     suspend fun accountExists(email: String): AppResult<Boolean>
     suspend fun signInWithGoogle(credential: GoogleCredentialResult): AppResult<Unit>
     suspend fun beginGoogleSignUp(): AppResult<String>

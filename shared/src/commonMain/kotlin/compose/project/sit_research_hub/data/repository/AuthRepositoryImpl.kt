@@ -44,7 +44,16 @@ class AuthRepositoryImpl(
                 stored
             }
         }
-        _authState.value = resolveState(session)
+        when (val restoredState = resolveState(session)) {
+            is AuthState.NeedsProfile -> {
+                // Profile setup is only entered immediately after an accepted
+                // sign-up. Restoring or signing in to an incomplete account must
+                // never route the user into first-time setup.
+                store.clearSession()
+                _authState.value = AuthState.SignedOut
+            }
+            else -> _authState.value = restoredState
+        }
     }
 
     override suspend fun accountExists(email: String): AppResult<Boolean> {
@@ -54,6 +63,8 @@ class AuthRepositoryImpl(
         }
         return api.accountExists(normalized)
     }
+
+    override suspend fun prepareGoogleSignIn(): AppResult<Unit> = api.prepareGoogleSignIn()
 
     override suspend fun signInWithGoogle(credential: GoogleCredentialResult): AppResult<Unit> {
         if (credential is GoogleCredentialResult.IdToken) {
@@ -103,9 +114,21 @@ class AuthRepositoryImpl(
                     val session = response.data.toStoredSession()
                     if (allowProfileSetup) {
                         when (val registered = api.completeGoogleSignUp(session.accessToken, requireNotNull(signupId))) {
-                            is AppResult.Failure -> return registered
+                            is AppResult.Failure -> {
+                                // Desktop OAuth can return an existing account before
+                                // the app checks it. If the completion RPC rejects that
+                                // account, use the shared account registry to report
+                                // the correct reason instead of a generic setup error.
+                                when (val existing = accountExists(session.email)) {
+                                    is AppResult.Success -> if (existing.data) {
+                                        return AppResult.Failure(AuthException("You already have an account. Sign in instead."))
+                                    }
+                                    is AppResult.Failure -> Unit
+                                }
+                                return registered
+                            }
                             is AppResult.Success -> if (!registered.data) {
-                                return AppResult.Failure(AuthException("Account was already created. Sign in instead."))
+                                return AppResult.Failure(AuthException("You already have an account. Sign in instead."))
                             }
                         }
                     } else {
@@ -116,9 +139,14 @@ class AuthRepositoryImpl(
                             }
                         }
                     }
+                    val resolvedState = resolveState(session)
+                    if (!allowProfileSetup && resolvedState is AuthState.NeedsProfile) {
+                        return AppResult.Failure(
+                            AuthException("Your account has not completed sign-up. Sign up first.")
+                        )
+                    }
                     store.clearSession()
                     store.saveSession(session)
-                    val resolvedState = resolveState(session)
                     _authState.value = resolvedState
                     AppResult.Success(Unit)
                 }

@@ -62,6 +62,16 @@ create trigger enforce_email_domain
 create or replace function public.register_app_account()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
+  -- A newly created OAuth user is registered atomically by
+  -- complete_google_signup after it consumes the signup marker. Registering
+  -- it here would make that same first-time signup look like a duplicate if
+  -- the completion marker was not available.
+  if exists (
+    select 1 from private.recent_google_signups where user_id = new.id
+  ) then
+    return new;
+  end if;
+
   insert into private.app_accounts(user_id, email)
   values (new.id, lower(trim(new.email)))
   on conflict (user_id) do update set email = excluded.email;
@@ -83,11 +93,11 @@ create table if not exists public.profiles (
     created_at  timestamptz not null default now()
     );
 
--- Existing users with completed profiles are already established app accounts.
+-- Existing Supabase users are established accounts, including users whose
+-- profile setup has not yet been completed.
 insert into private.app_accounts(user_id, email)
 select users.id, lower(trim(users.email))
 from auth.users as users
-join public.profiles as profiles on profiles.id = users.id
 where users.email is not null
 on conflict (user_id) do nothing;
 
@@ -114,6 +124,21 @@ create policy "profiles: update own" on public.profiles
 -- Each sign-up receives a short-lived, single-use permit. The auth trigger
 -- requires it before creating a Supabase user, while account_exists only
 -- recognizes accounts registered by the app or with a completed profile.
+create or replace function public.prepare_google_signin()
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  -- Supabase OAuth creates a user as part of its sign-in flow when no user
+  -- exists. Clear any leftover signup permits before starting a sign-in so
+  -- that the auth.users trigger rejects unknown accounts instead.
+  delete from private.google_signup_intents;
+$$;
+
+revoke all on function public.prepare_google_signin() from public;
+grant execute on function public.prepare_google_signin() to anon, authenticated;
+
 drop function if exists public.begin_google_signup();
 create function public.begin_google_signup()
 returns uuid
@@ -159,6 +184,9 @@ begin
   if consumed_signup_id is not null then
     delete from private.google_signup_intents
     where signup_id in (p_signup_id, consumed_signup_id);
+    insert into private.app_accounts(user_id, email)
+    values (current_user_id, current_email)
+    on conflict (user_id) do update set email = excluded.email;
     return true;
   end if;
 
