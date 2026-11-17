@@ -9,6 +9,8 @@ object Destination {
     const val ADD_RESEARCH = "add_research"
     const val RESEARCH_SUMMARY = "research_summary"
     const val MY_RESPONSES = "my_responses"
+    const val ACCOUNT = "account"
+    const val INTERVIEW_SCHEDULES = "interview_schedules"
 
     fun researchDetails(researchId: String): String {
         return "research_details/$researchId"

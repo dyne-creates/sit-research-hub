@@ -1,6 +1,7 @@
 package compose.project.sit_research_hub.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,11 +72,26 @@ fun ProfileSetupScreen(
                     Text("I agree to the Privacy Policy and Data Collection Terms.", modifier = Modifier.padding(start = 8.dp))
                 }
                 (externalError ?: error)?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-                Button(
-                    enabled = !isSaving,
-                    onClick = { if (program == null || year == null || !consent) error = "Select your program, year level, and consent to continue." else { error = null; onContinue(program!!, year!!) } },
-                    modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) { Text(if (isSaving) "Saving profile…" else "Continue to Home") }
+
+                val isProfileSetupComplete = program != null && year != null && consent
+
+                Text(
+                    text = if (isSaving) "Saving profile..."  else "Continue to Home",
+                    color = if (isProfileSetupComplete && !isSaving)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .clickable(
+                            enabled = isProfileSetupComplete && !isSaving
+                        ) {
+                            error = null
+                            onContinue(program!!, year!!)
+                        }
+                )
             }
         }
     }

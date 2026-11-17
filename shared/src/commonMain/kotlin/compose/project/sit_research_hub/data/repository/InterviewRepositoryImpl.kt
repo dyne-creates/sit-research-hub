@@ -12,6 +12,10 @@ class InterviewRepositoryImpl(private val api: InterviewApi) : InterviewReposito
         is AppResult.Failure -> result
         is AppResult.Success -> AppResult.Success(result.data.map { it.toDomain() })
     }
+    override suspend fun bookedSlots(userId: String): AppResult<List<InterviewSlot>> = when (val result = safeApiCall { api.bookedSlots(userId) }) {
+        is AppResult.Failure -> result
+        is AppResult.Success -> AppResult.Success(result.data.map { it.toDomain() })
+    }
     override suspend fun create(studyId: String, startsAt: String, location: String, notes: String): AppResult<InterviewSlot> =
         when (val result = safeApiCall { api.create(NewSlotDto(studyId, startsAt, location, notes)) }) {
             is AppResult.Failure -> result

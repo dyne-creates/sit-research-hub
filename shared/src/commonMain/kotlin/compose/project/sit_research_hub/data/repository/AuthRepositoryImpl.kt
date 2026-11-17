@@ -44,16 +44,10 @@ class AuthRepositoryImpl(
                 stored
             }
         }
-        when (val restoredState = resolveState(session)) {
-            is AuthState.NeedsProfile -> {
-                // Profile setup is only entered immediately after an accepted
-                // sign-up. Restoring or signing in to an incomplete account must
-                // never route the user into first-time setup.
-                store.clearSession()
-                _authState.value = AuthState.SignedOut
-            }
-            else -> _authState.value = restoredState
-        }
+        // A Google account can exist before its academic profile is completed.
+        // Keep the refreshed session so the student can safely resume setup
+        // after closing the app instead of becoming locked out of both flows.
+        _authState.value = resolveState(session)
     }
 
     override suspend fun accountExists(email: String): AppResult<Boolean> {
@@ -89,7 +83,7 @@ class AuthRepositoryImpl(
                 is AppResult.Failure -> return exists
                 is AppResult.Success -> if (exists.data) {
                     cancelGoogleSignUp(signupId)
-                    return AppResult.Failure(AuthException("Account was already created. Sign in instead."))
+                    return AppResult.Failure(AuthException("Your account may already exist or its setup is incomplete. Sign in to continue."))
                 }
             }
         }
@@ -140,11 +134,6 @@ class AuthRepositoryImpl(
                         }
                     }
                     val resolvedState = resolveState(session)
-                    if (!allowProfileSetup && resolvedState is AuthState.NeedsProfile) {
-                        return AppResult.Failure(
-                            AuthException("Your account has not completed sign-up. Sign up first.")
-                        )
-                    }
                     store.clearSession()
                     store.saveSession(session)
                     _authState.value = resolvedState

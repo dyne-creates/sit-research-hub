@@ -17,6 +17,8 @@ import compose.project.sit_research_hub.ui.screens.YourResearchesScreen
 import compose.project.sit_research_hub.ui.screens.AddResearchScreen
 import compose.project.sit_research_hub.ui.screens.ResearchSummaryScreen
 import compose.project.sit_research_hub.ui.screens.MyResponsesScreen
+import compose.project.sit_research_hub.ui.screens.AccountScreen
+import compose.project.sit_research_hub.ui.screens.InterviewSchedulesScreen
 import compose.project.sit_research_hub.presentation.settings.SettingsViewModel
 import compose.project.sit_research_hub.presentation.home.HomeViewModel
 import compose.project.sit_research_hub.domain.model.User
@@ -28,7 +30,8 @@ fun AppNavHost(
     homeViewModel: HomeViewModel,
     user: User,
     profile: StudentProfile,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onSaveProfile: (StudentProfile) -> Unit
 ) {
     val navController = rememberNavController()
     var selectedResearchId by remember { mutableStateOf("") }
@@ -47,7 +50,7 @@ fun AppNavHost(
                         Destination.researchDetails(researchId)
                     )
                 },
-                onCreateResearch = { navController.navigate(Destination.ADD_RESEARCH) },
+                onProfileClick = { navController.navigate(Destination.ACCOUNT) },
                 onYourResearchesClick = { navController.navigate(Destination.YOUR_RESEARCHES) },
                 onSettingsClick = {
                     navController.navigate(Destination.SETTINGS)
@@ -60,7 +63,7 @@ fun AppNavHost(
         }
 
         composable(Destination.YOUR_RESEARCHES) {
-            YourResearchesScreen(user.id, onBack = { navController.popBackStack() }, onStudyClick = { id ->
+            YourResearchesScreen(user.id, onBack = { navController.navigate(Destination.HOME) }, onAddResearch = { navController.navigate(Destination.ADD_RESEARCH) }, onSettingsClick = { navController.navigate(Destination.SETTINGS) }, onStudyClick = { id ->
                 selectedResearchId = id
                 navController.navigate(Destination.researchDetails(id))
             }, onResultsClick = { id ->
@@ -75,6 +78,31 @@ fun AppNavHost(
 
         composable(Destination.MY_RESPONSES) {
             MyResponsesScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Destination.INTERVIEW_SCHEDULES) {
+            InterviewSchedulesScreen(user.id, onBack = { navController.popBackStack() })
+        }
+
+        composable(Destination.ACCOUNT) {
+            AccountScreen(
+                user = user,
+                profile = profile,
+                // My Account is a destination reached from the app chrome. Do
+                // not pop blindly: an empty restored back stack would leave the
+                // NavHost with no visible destination. Returning always lands
+                // on the stable signed-in Home destination.
+                onBack = {
+                    navController.navigate(Destination.HOME) {
+                        popUpTo(Destination.HOME) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onSaveProfile = onSaveProfile,
+                onMyResponses = { navController.navigate(Destination.MY_RESPONSES) },
+                onInterviewSchedules = { navController.navigate(Destination.INTERVIEW_SCHEDULES) },
+                onSignOut = onSignOut
+            )
         }
 
         // Research Details Screen
@@ -94,12 +122,10 @@ fun AppNavHost(
         composable(Destination.SETTINGS) {
             SettingsScreen(
                 viewModel = settingsViewModel,
-                accountEmail = user.email,
-                onSignOut = onSignOut,
-                onMyResponses = { navController.navigate(Destination.MY_RESPONSES) },
                 onBackClick = {
-                    navController.popBackStack()
-                }
+                    navController.navigate(Destination.HOME)
+                },
+                onYourResearches = { navController.navigate(Destination.YOUR_RESEARCHES) }
             )
         }
     }

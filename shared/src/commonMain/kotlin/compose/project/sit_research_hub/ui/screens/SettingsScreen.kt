@@ -20,9 +20,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,8 +40,9 @@ import compose.project.sit_research_hub.domain.model.ThemeMode
 import compose.project.sit_research_hub.presentation.settings.SettingsViewModel
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onBackClick: () -> Unit, accountEmail: String = "", onSignOut: () -> Unit = {}, onMyResponses: () -> Unit = {}) {
+fun SettingsScreen(viewModel: SettingsViewModel, onBackClick: () -> Unit, onYourResearches: () -> Unit) {
     val settings = viewModel.settings.collectAsState().value
+    var info by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), horizontalAlignment = Alignment.CenterHorizontally) {
         Column(Modifier.fillMaxWidth().widthIn(max = 640.dp).weight(1f).background(MaterialTheme.colorScheme.surface)) {
             Text("Settings", modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).padding(horizontal = 20.dp, vertical = 18.dp), color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
@@ -50,19 +57,17 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBackClick: () -> Unit, accoun
                 ChoiceRow("Newest to Oldest", settings.sortOrder == SortOrder.NEWEST_FIRST) { viewModel.setSortOrder(SortOrder.NEWEST_FIRST) }
                 ChoiceRow("Research Title (A-Z)", settings.sortOrder == SortOrder.TITLE_A_TO_Z) { viewModel.setSortOrder(SortOrder.TITLE_A_TO_Z) }
                 Text("Information", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                InfoRow("ⓘ", "Privacy policy")
-                InfoRow("ⓘ", "About Research hub")
-                OutlinedButton(onClick = onMyResponses, modifier = Modifier.fillMaxWidth()) { Text("My Responses") }
-                if (accountEmail.isNotBlank()) {
-                    Text("Signed in as $accountEmail", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }
-                }
+                InfoRow("ⓘ", "Privacy policy") { info = "SIT Research Hub uses your account and academic profile only to provide secure access, eligibility checks, and the research features you choose to use." }
+                InfoRow("ⓘ", "About Research hub") { info = "SIT Research Hub helps SIT students discover studies, participate as respondents, and manage their own research using one university account." }
             }
             Row(Modifier.fillMaxWidth().height(68.dp).background(MaterialTheme.colorScheme.primary), verticalAlignment = Alignment.CenterVertically) {
                 BottomItem("⌂", "Home", false, onBackClick)
-                BottomItem("▣", "Your\nResearches", false) { }
+                BottomItem("▣", "Your Researches", false, onYourResearches)
                 BottomItem("⚙", "Settings", true) { }
             }
+        }
+        info?.let { message ->
+            AlertDialog(onDismissRequest = { info = null }, confirmButton = { TextButton(onClick = { info = null }) { Text("Close") } }, title = { Text(if (message.startsWith("SIT Research Hub uses")) "Privacy policy" else "About Research Hub") }, text = { Text(message) })
         }
     }
 }
@@ -80,8 +85,8 @@ private fun ChoiceRow(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun InfoRow(icon: String, label: String) {
-    Row(Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(7.dp)).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun InfoRow(icon: String, label: String, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(7.dp)).padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(icon, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(12.dp))
         Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface)

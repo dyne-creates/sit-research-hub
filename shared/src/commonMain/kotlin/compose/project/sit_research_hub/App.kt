@@ -79,7 +79,7 @@ fun App(googleIdTokenProvider: GoogleIdTokenProvider) {
                             localDataCleaner.clear()
                             authViewModel.signOut()
                         }
-                    })
+                    }, onSaveProfile = { updatedProfile -> authViewModel.saveProfile(updatedProfile, consentAccepted = true) })
                 }
             }
         }

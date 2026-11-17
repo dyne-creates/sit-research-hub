@@ -12,6 +12,9 @@ class InterviewApi(private val rest: RestClient) {
     suspend fun slots(studyId: String): List<SlotDto> = rest.send(HttpMethod.Get, "rest/v1/interview_slots") {
         parameter("study_id", "eq.$studyId"); parameter("select", "*"); parameter("order", "starts_at.asc")
     }.body()
+    suspend fun bookedSlots(userId: String): List<SlotDto> = rest.send(HttpMethod.Get, "rest/v1/interview_slots") {
+        parameter("booked_by", "eq.$userId"); parameter("select", "*"); parameter("order", "starts_at.asc")
+    }.body()
     suspend fun create(dto: NewSlotDto): SlotDto = rest.send(HttpMethod.Post, "rest/v1/interview_slots") {
         header("Prefer", "return=representation"); contentType(ContentType.Application.Json); setBody(dto)
     }.body<List<SlotDto>>().first()

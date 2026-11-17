@@ -50,7 +50,7 @@ import compose.project.sit_research_hub.presentation.home.HomeViewModel
 fun HomeScreen(
     viewModel: HomeViewModel,
     onResearchClick: (String) -> Unit,
-    onCreateResearch: () -> Unit,
+    onProfileClick: () -> Unit,
     onYourResearchesClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -103,7 +103,7 @@ fun HomeScreen(
 
                 // PROFILE BUTTON
                 IconButton(
-                    onClick = onCreateResearch,
+                    onClick = onProfileClick,
                     modifier = Modifier
                         .size(46.dp)
                         .clip(CircleShape)
@@ -271,7 +271,7 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // AVAILABLE STUDIES HEADER AND CREATE BUTTON
+                // AVAILABLE STUDIES HEADER
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -291,26 +291,6 @@ fun HomeScreen(
                             text = "${visibleStudies.size} studies found",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Button(
-                        onClick = onCreateResearch,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = 12.dp,
-                            vertical = 9.dp
-                        )
-                    ) {
-                        Text(
-                            text = "+ Create Research",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

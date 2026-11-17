@@ -564,7 +564,26 @@ fun StudyDetailScreen(
                                             )
                                         }
 
-                                        if (!isOwner && slot.isAvailable) {
+                                        if (isOwner) {
+                                            Column(horizontalAlignment = Alignment.End) {
+                                                Text(
+                                                    slot.bookedByName?.let { "Booked: $it" } ?: "Available",
+                                                    fontSize = 10.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                TextButton(onClick = {
+                                                    scope.launch {
+                                                        when (val result = interviews.delete(slot.id)) {
+                                                            is AppResult.Success -> {
+                                                                slots = slots.filterNot { it.id == slot.id }
+                                                                message = "Interview slot removed."
+                                                            }
+                                                            is AppResult.Failure -> message = result.error.message
+                                                        }
+                                                    }
+                                                }) { Text("Remove") }
+                                            }
+                                        } else if (slot.isAvailable) {
                                             TextButton(
                                                 onClick = {
                                                     scope.launch {

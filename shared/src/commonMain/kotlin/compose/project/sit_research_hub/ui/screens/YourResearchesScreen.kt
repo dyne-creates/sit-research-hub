@@ -24,6 +24,8 @@ import org.koin.compose.koinInject
 fun YourResearchesScreen(
     userId: String,
     onBack: () -> Unit,
+    onAddResearch: () -> Unit,
+    onSettingsClick: () -> Unit,
     onStudyClick: (String) -> Unit,
     onResultsClick: (String) -> Unit
 ) {
@@ -102,22 +104,12 @@ fun YourResearchesScreen(
                 )
             }
 
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        val result = repository.refresh()
-                        offline = result is AppResult.Failure
-
-                        message = when (result) {
-                            is AppResult.Success -> "Research refreshed."
-                            is AppResult.Failure -> result.error.message
-                        }
-                    }
-                },
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Text("↻  Refresh", fontSize = 11.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { scope.launch { val result = repository.refresh(); offline = result is AppResult.Failure; message = when (result) { is AppResult.Success -> "Research refreshed."; is AppResult.Failure -> result.error.message } } },
+                    shape = RoundedCornerShape(10.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+                ) { Text("Refresh", fontSize = 11.sp) }
+                Button(onClick = onAddResearch, shape = RoundedCornerShape(10.dp), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("+ Add", fontSize = 11.sp) }
             }
         }
 
@@ -361,6 +353,23 @@ fun YourResearchesScreen(
                 }
             }
         }
+        Row(
+            modifier = Modifier.fillMaxWidth().height(68.dp).background(MaterialTheme.colorScheme.primary),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            NavigationItem("⌂", "Home", false, onBack)
+            NavigationItem("▤", "Your Researches", true, {})
+            NavigationItem("⚙", "Settings", false, onSettingsClick)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.NavigationItem(symbol: String, label: String, selected: Boolean, onClick: () -> Unit) {
+    Column(Modifier.weight(1f).fillMaxHeight().clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Text(symbol, color = MaterialTheme.colorScheme.onPrimary, fontSize = 22.sp)
+        Text(label, color = MaterialTheme.colorScheme.onPrimary, fontSize = 10.sp)
     }
 }
 
