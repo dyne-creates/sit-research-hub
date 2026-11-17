@@ -1,6 +1,7 @@
 
 package compose.project.sit_research_hub.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -8,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -17,7 +19,6 @@ import compose.project.sit_research_hub.domain.repository.StudyRepository
 import compose.project.sit_research_hub.domain.usecase.ValidateStudyUseCase
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import androidx.compose.foundation.background
 
 private data class QuestionDraft(
     val prompt: String = "",
@@ -25,6 +26,15 @@ private data class QuestionDraft(
     val options: String = "",
     val ratingMax: Int = 5
 )
+
+private val programOptions = listOf(
+    "BSIT",
+    "BSCS",
+    "BSCPE",
+    "ACT-MM"
+)
+
+private val yearOptions = listOf(1, 2, 3, 4)
 
 @Composable
 fun AddResearchScreen(
@@ -38,15 +48,26 @@ fun AddResearchScreen(
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var requirements by remember { mutableStateOf("") }
-    var eligiblePrograms by remember { mutableStateOf("") }
-    var eligibleYears by remember { mutableStateOf("") }
-    var questionDrafts by remember { mutableStateOf(listOf(QuestionDraft())) }
-    var type by remember { mutableStateOf(StudyType.QUALITATIVE) }
+
+    // An empty set means All is selected.
+    var selectedPrograms by remember { mutableStateOf(setOf<String>()) }
+    var selectedYears by remember { mutableStateOf(setOf<Int>()) }
+
+    var questionDrafts by remember {
+        mutableStateOf(listOf(QuestionDraft()))
+    }
+
+    var type by remember {
+        mutableStateOf(StudyType.QUALITATIVE)
+    }
+
     var anonymous by remember { mutableStateOf(false) }
     var oneResponse by remember { mutableStateOf(true) }
+
     var error by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
+
+    val actMmOnly = selectedPrograms == setOf("ACT-MM")
 
     Column(
         modifier = Modifier
@@ -56,6 +77,7 @@ fun AddResearchScreen(
             .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+
         // HEADER
         Column {
             TextButton(
@@ -107,52 +129,133 @@ fun AddResearchScreen(
                 minLines = 3,
                 shape = RoundedCornerShape(12.dp)
             )
-
-            OutlinedTextField(
-                value = requirements,
-                onValueChange = { requirements = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Who can participate?") },
-                placeholder = {
-                    Text("Describe any participation requirements")
-                },
-                shape = RoundedCornerShape(12.dp)
-            )
         }
 
-        // SECTION 2: ELIGIBILITY
+        // SECTION 2: RESPONDENT ELIGIBILITY
         FormSection(
             title = "Respondent eligibility",
             description = "Specify which students are eligible to participate."
         ) {
-            OutlinedTextField(
-                value = eligiblePrograms,
-                onValueChange = { eligiblePrograms = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Eligible programs") },
-                placeholder = {
-                    Text("e.g. BSIT, BSCS, BSHM")
-                },
-                supportingText = {
-                    Text("Separate multiple programs with commas.")
-                },
-                shape = RoundedCornerShape(12.dp)
+
+            // ELIGIBLE PROGRAMS
+            Text(
+                text = "Eligible programs",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
-            OutlinedTextField(
-                value = eligibleYears,
-                onValueChange = { eligibleYears = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Eligible year levels") },
-                placeholder = {
-                    Text("e.g. 1, 2, 3")
-                },
-                supportingText = {
-                    Text("Enter year levels from 1 to 6, separated by commas.")
-                },
-                shape = RoundedCornerShape(12.dp)
+            Text(
+                text = "Select one or more programs.",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
+            EligibilityCheckbox(
+                label = "All programs",
+                checked = selectedPrograms.isEmpty(),
+                onCheckedChange = {
+                    selectedPrograms = emptySet()
+                }
+            )
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+
+            programOptions.forEach { program ->
+                EligibilityCheckbox(
+                    label = program,
+                    checked = program in selectedPrograms,
+                    onCheckedChange = { checked ->
+                        val updatedPrograms = when {
+                            selectedPrograms.isEmpty() && checked -> {
+                                setOf(program)
+                            }
+
+                            checked -> {
+                                selectedPrograms + program
+                            }
+
+                            else -> {
+                                selectedPrograms - program
+                            }
+                        }
+
+                        selectedPrograms = updatedPrograms
+
+                        // ACT-MM only offers year levels 1 and 2.
+                        // Remove year levels 3 and 4 if ACT-MM becomes
+                        // the only selected program.
+                        if (updatedPrograms == setOf("ACT-MM")) {
+                            selectedYears = selectedYears.intersect(
+                                setOf(1, 2)
+                            )
+                        }
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(5.dp))
+
+            // ELIGIBLE YEAR LEVELS
+            Text(
+                text = "Eligible year levels",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Text(
+                text = if (actMmOnly) {
+                    "ACT-MM is selected as the only program. Only years 1 and 2 are available."
+                } else {
+                    "Select one or more year levels."
+                },
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            EligibilityCheckbox(
+                label = "All year levels",
+                checked = selectedYears.isEmpty(),
+                onCheckedChange = {
+                    selectedYears = emptySet()
+                }
+            )
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+
+            yearOptions.forEach { year ->
+                val enabled = !(actMmOnly && year in listOf(3, 4))
+
+                EligibilityCheckbox(
+                    label = "Year $year",
+                    checked = year in selectedYears,
+                    enabled = enabled,
+                    onCheckedChange = { checked ->
+                        selectedYears = when {
+                            selectedYears.isEmpty() && checked -> {
+                                setOf(year)
+                            }
+
+                            checked -> {
+                                selectedYears + year
+                            }
+
+                            else -> {
+                                selectedYears - year
+                            }
+                        }
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(5.dp))
+
+            // STUDY TYPE
             Text(
                 text = "Study type",
                 fontWeight = FontWeight.SemiBold,
@@ -181,9 +284,10 @@ fun AddResearchScreen(
             title = "Response settings",
             description = "Choose how responses will be collected."
         ) {
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
                     checked = anonymous,
@@ -197,6 +301,7 @@ fun AddResearchScreen(
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+
                     Text(
                         text = "Collect answers without displaying respondent identities.",
                         fontSize = 11.sp,
@@ -205,11 +310,13 @@ fun AddResearchScreen(
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
                     checked = oneResponse,
@@ -223,6 +330,7 @@ fun AddResearchScreen(
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+
                     Text(
                         text = "Limit each respondent to one submission.",
                         fontSize = 11.sp,
@@ -232,11 +340,12 @@ fun AddResearchScreen(
             }
         }
 
-        // SECTION 4: QUESTIONS
+        // SECTION 4: RESEARCH QUESTIONS
         FormSection(
             title = "Research questions",
             description = "Add the questions respondents will answer."
         ) {
+
             questionDrafts.forEachIndexed { index, draft ->
                 QuestionDraftCard(
                     index = index,
@@ -284,6 +393,7 @@ fun AddResearchScreen(
                 .height(52.dp),
             shape = RoundedCornerShape(12.dp),
             onClick = {
+
                 val questions = questionDrafts.mapIndexed { index, draft ->
                     Question(
                         id = "q${index + 1}",
@@ -300,17 +410,26 @@ fun AddResearchScreen(
                     )
                 }
 
-                val invalidYear = eligibleYears.split(',')
-                    .map(String::trim)
-                    .filter(String::isNotEmpty)
-                    .any {
-                        val level = it.toIntOrNull()
-                        level == null || level !in 1..6
+                // Convert UI selections into the existing eligibility model.
+                //
+                // An empty program list means all programs.
+                // An empty year list means all year levels.
+                //
+                // Exception: ACT-MM only has years 1 and 2.
+                // Therefore, selecting All year levels for ACT-MM
+                // must save [1, 2], not an empty list.
+
+                val programsToSave = selectedPrograms
+                    .sortedBy { programOptions.indexOf(it) }
+
+                val yearsToSave = when {
+                    actMmOnly && selectedYears.isEmpty() -> {
+                        listOf(1, 2)
                     }
 
-                if (invalidYear) {
-                    error = "Year levels must be numbers from 1 to 6."
-                    return@Button
+                    else -> {
+                        selectedYears.sorted()
+                    }
                 }
 
                 val study = Study(
@@ -321,12 +440,8 @@ fun AddResearchScreen(
                     description = description.trim(),
                     type = type,
                     eligibility = Eligibility(
-                        programs = eligiblePrograms.split(',')
-                            .map(String::trim)
-                            .filter(String::isNotEmpty),
-                        yearLevels = eligibleYears.split(',')
-                            .mapNotNull { it.trim().toIntOrNull() },
-                        description = requirements.trim()
+                        programs = programsToSave,
+                        yearLevels = yearsToSave
                     ),
                     isAnonymous = anonymous,
                     oneResponsePerRespondent = oneResponse,
@@ -334,7 +449,10 @@ fun AddResearchScreen(
                     questions = questions
                 )
 
-                val validation = validate(study, forPublish = true)
+                val validation = validate(
+                    study,
+                    forPublish = true
+                )
 
                 if (validation.isNotEmpty()) {
                     error = validation.first()
@@ -343,10 +461,16 @@ fun AddResearchScreen(
 
                 scope.launch {
                     saving = true
+                    error = null
 
                     when (val result = repository.saveStudy(study)) {
-                        is AppResult.Success -> onBack()
-                        is AppResult.Failure -> error = result.error.message
+                        is AppResult.Success -> {
+                            onBack()
+                        }
+
+                        is AppResult.Failure -> {
+                            error = result.error.message
+                        }
                     }
 
                     saving = false
@@ -360,6 +484,35 @@ fun AddResearchScreen(
         }
 
         Spacer(modifier = Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun EligibilityCheckbox(
+    label: String,
+    checked: Boolean,
+    enabled: Boolean = true,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = checked,
+            enabled = enabled,
+            onCheckedChange = onCheckedChange
+        )
+
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            color = if (enabled) {
+                MaterialTheme.colorScheme.onSurface
+            } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            }
+        )
     }
 }
 
@@ -380,7 +533,9 @@ private fun FormSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(13.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
                     text = title,
                     fontSize = 16.sp,
@@ -395,7 +550,9 @@ private fun FormSection(
                 )
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
 
             content()
         }
@@ -412,7 +569,9 @@ private fun QuestionDraftCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                alpha = 0.45f
+            )
         )
     ) {
         Column(
