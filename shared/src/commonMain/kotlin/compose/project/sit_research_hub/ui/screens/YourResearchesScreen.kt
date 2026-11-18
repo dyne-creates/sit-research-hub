@@ -54,16 +54,6 @@ fun YourResearchesScreen(
                 .background(MaterialTheme.colorScheme.primary)
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            TextButton(
-                onClick = onBack,
-                contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Text("← Home")
-            }
-
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
