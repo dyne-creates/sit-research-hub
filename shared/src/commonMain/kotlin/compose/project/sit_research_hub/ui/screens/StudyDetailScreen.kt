@@ -154,27 +154,20 @@ fun StudyDetailScreen(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(20.dp)
                     ) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text(
-                                text = item.type.label,
-                                modifier = Modifier.padding(
-                                    horizontal = 11.dp,
-                                    vertical = 6.dp
-                                ),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-
-                        StudyStatusBadge(item.status)
+                        Text(
+                            text = item.type.label,
+                            modifier = Modifier.padding(
+                                horizontal = 11.dp,
+                                vertical = 6.dp
+                            ),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
 
                     Text(
@@ -226,7 +219,7 @@ fun StudyDetailScreen(
                 }
 
                 // ANONYMOUS NOTICE
-                if (item.isAnonymous) {
+                if (item.type == StudyType.QUALITATIVE) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.primaryContainer,
@@ -238,12 +231,15 @@ fun StudyDetailScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "✓",
+                                "ℹ",
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
+
                             Text(
-                                "Your answers are anonymous.",
+                                "For qualitative studies, your name and email address " +
+                                        "will be recorded to facilitate communication and interview scheduling. " +
+                                        "Your responses will remain confidential.",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )

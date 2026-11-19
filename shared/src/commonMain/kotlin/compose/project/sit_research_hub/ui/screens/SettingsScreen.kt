@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.sp
 import compose.project.sit_research_hub.domain.model.SortOrder
 import compose.project.sit_research_hub.domain.model.ThemeMode
 import compose.project.sit_research_hub.presentation.settings.SettingsViewModel
+import compose.project.sit_research_hub.ui.components.BottomBar
+import compose.project.sit_research_hub.ui.components.BottomNavTab
 
 private enum class SettingsPage {
     MAIN, PRIVACY, ABOUT
@@ -501,47 +503,11 @@ private fun BottomNavigation(
     onBackClick: () -> Unit,
     onYourResearches: () -> Unit
 ) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(68.dp)
-            .background(MaterialTheme.colorScheme.primary),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        BottomItem("⌂", "Home", false, onBackClick)
-        BottomItem("▣", "Your Researches", false, onYourResearches)
-        BottomItem("⚙", "Settings", true) {}
-    }
+    BottomBar(
+        selectedTab = BottomNavTab.SETTINGS,
+        onHomeClick = onBackClick,
+        onResearchesClick = onYourResearches,
+        onSettingsClick = {}
+    )
 }
 
-@Composable
-private fun RowScope.BottomItem(
-    icon: String,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Column(
-        Modifier
-            .weight(1f)
-            .fillMaxSize()
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            icon,
-            color = MaterialTheme.colorScheme.onPrimary.copy(
-                alpha = if (selected) 1f else .75f
-            ),
-            fontSize = 24.sp
-        )
-
-        Text(
-            label,
-            color = MaterialTheme.colorScheme.onPrimary,
-            fontSize = 10.sp,
-            lineHeight = 11.sp
-        )
-    }
-}

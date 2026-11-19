@@ -45,6 +45,8 @@ import compose.project.sit_research_hub.domain.model.AppResult
 import compose.project.sit_research_hub.domain.model.Study
 import compose.project.sit_research_hub.domain.model.StudyType
 import compose.project.sit_research_hub.presentation.home.HomeViewModel
+import compose.project.sit_research_hub.ui.components.BottomBar
+import compose.project.sit_research_hub.ui.components.BottomNavTab
 
 @Composable
 fun HomeScreen(
@@ -368,36 +370,12 @@ fun HomeScreen(
             }
 
             // BOTTOM NAVIGATION
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(68.dp)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                BottomNavItem(
-                    symbol = "⌂",
-                    label = "Home",
-                    selected = true,
-                    onClick = { }
-                )
-
-                BottomNavItem(
-                    symbol = "▤",
-                    label = "Your Researches",
-                    selected = false,
-                    onClick = onYourResearchesClick
-                )
-
-                BottomNavItem(
-                    symbol = "⚙",
-                    label = "Settings",
-                    selected = false,
-                    onClick = onSettingsClick
-                )
-            }
+            BottomBar(
+                selectedTab = BottomNavTab.HOME,
+                onHomeClick = {},
+                onResearchesClick = onYourResearchesClick,
+                onSettingsClick = onSettingsClick
+            )
         }
     }
 }
@@ -523,35 +501,3 @@ private fun ResearchCard(
     }
 }
 
-@Composable
-private fun RowScope.BottomNavItem(
-    symbol: String,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .weight(1f)
-            .fillMaxSize()
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = symbol,
-            color = MaterialTheme.colorScheme.onPrimary,
-            fontSize = 21.sp
-        )
-
-        Text(
-            text = label,
-            color = MaterialTheme.colorScheme.onPrimary.copy(
-                alpha = if (selected) 1f else 0.72f
-            ),
-            fontSize = 10.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-        )
-    }
-}

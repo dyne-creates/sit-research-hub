@@ -19,6 +19,8 @@ import compose.project.sit_research_hub.domain.model.*
 import compose.project.sit_research_hub.domain.repository.StudyRepository
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import compose.project.sit_research_hub.ui.components.BottomBar
+import compose.project.sit_research_hub.ui.components.BottomNavTab
 
 @Composable
 fun YourResearchesScreen(
@@ -343,25 +345,16 @@ fun YourResearchesScreen(
                 }
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().height(68.dp).background(MaterialTheme.colorScheme.primary),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            NavigationItem("⌂", "Home", false, onBack)
-            NavigationItem("▤", "Your Researches", true, {})
-            NavigationItem("⚙", "Settings", false, onSettingsClick)
-        }
+        BottomBar(
+            selectedTab = BottomNavTab.RESEARCHES,
+            onHomeClick = onBack,
+            onResearchesClick = {},
+            onSettingsClick = onSettingsClick
+        )
     }
 }
 
-@Composable
-private fun RowScope.NavigationItem(symbol: String, label: String, selected: Boolean, onClick: () -> Unit) {
-    Column(Modifier.weight(1f).fillMaxHeight().clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text(symbol, color = MaterialTheme.colorScheme.onPrimary, fontSize = 22.sp)
-        Text(label, color = MaterialTheme.colorScheme.onPrimary, fontSize = 10.sp)
-    }
-}
+
 
 @Composable
 private fun StatusBadge(status: StudyStatus) {

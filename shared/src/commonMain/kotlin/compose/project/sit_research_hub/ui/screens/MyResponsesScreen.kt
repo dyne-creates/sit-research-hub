@@ -18,6 +18,33 @@ import compose.project.sit_research_hub.domain.model.AppResult
 import compose.project.sit_research_hub.domain.repository.SubmissionRepository
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+
+private fun formatSubmittedDate(dateString: String): String {
+    return try {
+        val instant = Instant.parse(dateString)
+        val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+
+        val months = listOf(
+            "January", "February", "March", "April",
+            "May", "June", "July", "August",
+            "September", "October", "November", "December"
+        )
+
+        val hour = dateTime.hour % 12
+        val formattedHour = if (hour == 0) 12 else hour
+        val period = if (dateTime.hour < 12) "AM" else "PM"
+
+        "${months[dateTime.monthNumber - 1]} ${dateTime.dayOfMonth}, " +
+                "${dateTime.year} • " +
+                "${formattedHour}:${dateTime.minute.toString().padStart(2, '0')} $period"
+
+    } catch (e: Exception) {
+        dateString
+    }
+}
 
 @Composable
 fun MyResponsesScreen(onBack: () -> Unit) {
@@ -239,7 +266,7 @@ fun MyResponsesScreen(onBack: () -> Unit) {
                                     )
 
                                     Text(
-                                        text = participation.createdAt,
+                                        text = formatSubmittedDate(participation.createdAt),
                                         fontSize = 11.sp,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )

@@ -19,12 +19,21 @@ import compose.project.sit_research_hub.domain.repository.StudyRepository
 import compose.project.sit_research_hub.domain.usecase.ValidateStudyUseCase
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import compose.project.sit_research_hub.domain.usecase.CreateInterviewSlotUseCase
+
 
 private data class QuestionDraft(
     val prompt: String = "",
     val type: QuestionType = QuestionType.SHORT_ANSWER,
-    val options: String = "",
+    val options: List<String> = listOf(""),
     val ratingMax: Int = 5
+)
+
+private data class InterviewDraft(
+    val date: String = "",
+    val time: String = "",
+    val location: String = "",
+    val notes: String = ""
 )
 
 private val programOptions = listOf(
@@ -41,10 +50,14 @@ fun AddResearchScreen(
     ownerId: String,
     ownerName: String,
     onBack: () -> Unit
+
 ) {
     val repository = koinInject<StudyRepository>()
     val validate = koinInject<ValidateStudyUseCase>()
+    val createInterviewSlot = koinInject<CreateInterviewSlotUseCase>()
     val scope = rememberCoroutineScope()
+
+
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -57,15 +70,22 @@ fun AddResearchScreen(
         mutableStateOf(listOf(QuestionDraft()))
     }
 
+    var interviewDrafts by remember {
+        mutableStateOf(listOf(InterviewDraft()))
+    }
+
     var type by remember {
         mutableStateOf(StudyType.QUALITATIVE)
     }
 
-    var anonymous by remember { mutableStateOf(false) }
-    var oneResponse by remember { mutableStateOf(true) }
 
     var error by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
+    var publishedStudy by remember { mutableStateOf<Study?>(null) }
+    var scheduledSlotCount by remember { mutableStateOf(0) }
+    var publishedInterviewDrafts by remember {
+        mutableStateOf<List<InterviewDraft>?>(null)
+    }
 
     val actMmOnly = selectedPrograms == setOf("ACT-MM")
 
@@ -279,93 +299,160 @@ fun AddResearchScreen(
             }
         }
 
-        // SECTION 3: RESPONSE SETTINGS
-        FormSection(
-            title = "Response settings",
-            description = "Choose how responses will be collected."
-        ) {
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+        // SECTION 3: INTERVIEW SCHEDULE
+        if (type == StudyType.QUALITATIVE) {
+            FormSection(
+                title = "Interview schedule",
+                description = "Set the available dates and times for respondent interviews."
             ) {
-                Checkbox(
-                    checked = anonymous,
-                    onCheckedChange = { anonymous = it }
-                )
+                interviewDrafts.forEachIndexed { index, draft ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                                alpha = 0.45f
+                            )
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(13.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "INTERVIEW SLOT ${index + 1}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Anonymous responses",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                                if (interviewDrafts.size > 1) {
+                                    TextButton(
+                                        onClick = {
+                                            interviewDrafts = interviewDrafts
+                                                .toMutableList()
+                                                .also { it.removeAt(index) }
+                                        }
+                                    ) {
+                                        Text("Remove")
+                                    }
+                                }
+                            }
 
-                    Text(
-                        text = "Collect answers without displaying respondent identities.",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                            OutlinedTextField(
+                                value = draft.date,
+                                onValueChange = { value ->
+                                    interviewDrafts = interviewDrafts
+                                        .toMutableList()
+                                        .also {
+                                            it[index] = draft.copy(date = value)
+                                        }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Interview date") },
+                                placeholder = { Text("YYYY-MM-DD") },
+                                supportingText = { Text("Example: 2026-11-25") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(10.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = draft.time,
+                                onValueChange = { value ->
+                                    interviewDrafts = interviewDrafts
+                                        .toMutableList()
+                                        .also {
+                                            it[index] = draft.copy(time = value)
+                                        }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Interview time") },
+                                placeholder = { Text("HH:mm (24-hour format)") },
+                                supportingText = { Text("Example: 14:30") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(10.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = draft.location,
+                                onValueChange = { value ->
+                                    interviewDrafts = interviewDrafts
+                                        .toMutableList()
+                                        .also {
+                                            it[index] = draft.copy(location = value)
+                                        }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Location / meeting link") },
+                                placeholder = { Text("Room, office, or online meeting link") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(10.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = draft.notes,
+                                onValueChange = { value ->
+                                    interviewDrafts = interviewDrafts
+                                        .toMutableList()
+                                        .also {
+                                            it[index] = draft.copy(notes = value)
+                                        }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Notes (optional)") },
+                                placeholder = { Text("Additional instructions for respondents") },
+                                minLines = 2,
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                        }
+                    }
                 }
-            }
 
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = oneResponse,
-                    onCheckedChange = { oneResponse = it }
-                )
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "One response per student",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Text(
-                        text = "Limit each respondent to one submission.",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                OutlinedButton(
+                    onClick = {
+                        interviewDrafts = interviewDrafts + InterviewDraft()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("+ Add another interview slot")
                 }
             }
         }
 
         // SECTION 4: RESEARCH QUESTIONS
-        FormSection(
-            title = "Research questions",
-            description = "Add the questions respondents will answer."
-        ) {
 
-            questionDrafts.forEachIndexed { index, draft ->
-                QuestionDraftCard(
-                    index = index,
-                    draft = draft,
-                    onDraftChange = { updated ->
-                        questionDrafts = questionDrafts.toMutableList().also {
-                            it[index] = updated
-                        }
-                    }
-                )
-            }
-
-            OutlinedButton(
-                onClick = {
-                    questionDrafts = questionDrafts + QuestionDraft()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+        if (type == StudyType.QUANTITATIVE) {
+            FormSection(
+                title = "Research questions",
+                description = "Add the questions respondents will answer."
             ) {
-                Text("+  Add another question")
+                questionDrafts.forEachIndexed { index, draft ->
+                    QuestionDraftCard(
+                        index = index,
+                        draft = draft,
+                        onDraftChange = { updated ->
+                            questionDrafts = questionDrafts.toMutableList().also {
+                                it[index] = updated
+                            }
+                        }
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        questionDrafts = questionDrafts + QuestionDraft()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("+  Add another question")
+                }
             }
         }
 
@@ -394,20 +481,24 @@ fun AddResearchScreen(
             shape = RoundedCornerShape(12.dp),
             onClick = {
 
-                val questions = questionDrafts.mapIndexed { index, draft ->
+                val questions = if (type == StudyType.QUALITATIVE) {
+                    emptyList()
+                } else {
+                    questionDrafts.mapIndexed { index, draft ->
                     Question(
                         id = "q${index + 1}",
                         text = draft.prompt.trim(),
                         type = draft.type,
                         options = if (draft.type.hasOptions) {
-                            draft.options.split(',')
-                                .map(String::trim)
-                                .filter(String::isNotEmpty)
+                            draft.options
+                                .map{ it.trim()}
+                                .filter{ it.isNotEmpty() }
                         } else {
                             emptyList()
                         },
                         ratingMax = draft.ratingMax
                     )
+                    }
                 }
 
                 // Convert UI selections into the existing eligibility model.
@@ -443,8 +534,8 @@ fun AddResearchScreen(
                         programs = programsToSave,
                         yearLevels = yearsToSave
                     ),
-                    isAnonymous = anonymous,
-                    oneResponsePerRespondent = oneResponse,
+                    isAnonymous = false,
+                    oneResponsePerRespondent = true,
                     status = StudyStatus.PUBLISHED,
                     questions = questions
                 )
@@ -459,17 +550,73 @@ fun AddResearchScreen(
                     return@Button
                 }
 
+                if (type == StudyType.QUALITATIVE) {
+                    val incompleteSlot = interviewDrafts.any {
+                        it.date.isBlank() ||
+                                it.time.isBlank() ||
+                                it.location.isBlank()
+                    }
+
+                    if (incompleteSlot) {
+                        error = "Complete the date, time, and location for every interview slot."
+                        return@Button
+                    }
+                }
+
                 scope.launch {
                     saving = true
                     error = null
 
-                    when (val result = repository.saveStudy(study)) {
+                    // Save the study only once.
+                    val savedStudy = publishedStudy ?: when (
+                        val result = repository.saveStudy(study)
+                    ) {
                         is AppResult.Success -> {
-                            onBack()
+                            result.data.also {
+                                publishedStudy = it
+                            }
                         }
 
                         is AppResult.Failure -> {
                             error = result.error.message
+                            null
+                        }
+                    }
+
+                    if (savedStudy != null) {
+                        if (type == StudyType.QUALITATIVE) {
+                            var schedulingFailed = false
+
+                            // Continue from the first slot that wasn't saved.
+                            for (index in scheduledSlotCount until interviewDrafts.size) {
+                                val draft = interviewDrafts[index]
+
+                                when (
+                                    createInterviewSlot(
+                                        savedStudy,
+                                        draft.date.trim(),
+                                        draft.time.trim(),
+                                        draft.location.trim(),
+                                        draft.notes.trim()
+                                    )
+                                ) {
+                                    is AppResult.Success -> {
+                                        scheduledSlotCount = index + 1
+                                    }
+
+                                    is AppResult.Failure -> {
+                                        error = "Study published, but interview slot ${index + 1} failed. Please press Publish again to retry."
+                                        schedulingFailed = true
+                                        break
+                                    }
+                                }
+                            }
+
+                            if (!schedulingFailed) {
+                                onBack()
+                            }
+                        } else {
+                            onBack()
                         }
                     }
 
@@ -630,21 +777,46 @@ private fun QuestionDraftCard(
             }
 
             if (draft.type.hasOptions) {
-                OutlinedTextField(
-                    value = draft.options,
-                    onValueChange = {
-                        onDraftChange(draft.copy(options = it))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Answer options") },
-                    placeholder = {
-                        Text("Option 1, Option 2, Option 3")
-                    },
-                    supportingText = {
-                        Text("Separate each option with a comma.")
-                    },
-                    shape = RoundedCornerShape(10.dp)
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Answer options",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    draft.options.forEachIndexed { optionIndex, option ->
+                        OutlinedTextField(
+                            value = option,
+                            onValueChange = { updatedOption ->
+                                val updatedOptions = draft.options.toMutableList()
+                                updatedOptions[optionIndex] = updatedOption
+
+                                onDraftChange(
+                                    draft.copy(options = updatedOptions)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Option ${optionIndex + 1}") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            onDraftChange(
+                                draft.copy(options = draft.options + "")
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("+  Add another option")
+                    }
+                }
             }
 
             if (draft.type == QuestionType.RATING_SCALE) {

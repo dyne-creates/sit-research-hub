@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +18,7 @@ import compose.project.sit_research_hub.domain.model.Programs
 import compose.project.sit_research_hub.domain.model.StudentProfile
 import compose.project.sit_research_hub.domain.model.User
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountScreen(
     user: User,
@@ -30,6 +32,8 @@ fun AccountScreen(
     var editing by remember { mutableStateOf(false) }
     var program by remember(profile) { mutableStateOf(profile.program) }
     var year by remember(profile) { mutableStateOf(profile.yearLevel) }
+    var programExpanded by remember { mutableStateOf(false) }
+    var yearExpanded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -50,8 +54,76 @@ fun AccountScreen(
                         TextButton(onClick = { editing = !editing }) { Text(if (editing) "Cancel" else "Edit") }
                     }
                     if (editing) {
-                        OutlinedTextField(program, { program = it }, Modifier.fillMaxWidth(), label = { Text("Program") }, singleLine = true)
-                        OutlinedTextField(year, { year = it }, Modifier.fillMaxWidth(), label = { Text("Year level") }, singleLine = true)
+                        ExposedDropdownMenuBox(
+                            expanded = programExpanded,
+                            onExpandedChange = { programExpanded = !programExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = program,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Program") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = programExpanded)
+                                },
+                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = programExpanded,
+                                onDismissRequest = { programExpanded = false }
+                            ) {
+                                Programs.options.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            program = option
+                                            programExpanded = false
+
+                                            val currentYear = year.firstOrNull(Char::isDigit)?.digitToIntOrNull()
+                                            if (option == "ACT-MM" && currentYear != null && currentYear > 2) {
+                                                year = "1st Year"
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        ExposedDropdownMenuBox(
+                            expanded = yearExpanded,
+                            onExpandedChange = { yearExpanded = !yearExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = year,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Year level") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded)
+                                },
+                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = yearExpanded,
+                                onDismissRequest = { yearExpanded = false }
+                            ) {
+                                (if (program == "ACT-MM") {
+                                    listOf("1st Year", "2nd Year")
+                                } else {
+                                    listOf("1st Year", "2nd Year", "3rd Year", "4th Year")
+                                }).forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            year = option
+                                            yearExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
                         error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
                         Button(onClick = {
                             val level = year.firstOrNull(Char::isDigit)?.digitToIntOrNull()
@@ -76,9 +148,37 @@ fun AccountScreen(
     }
 }
 
-@Composable private fun AccountLink(label: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, fontWeight = FontWeight.Medium); Text("›", fontSize = 22.sp)
+
+@Composable
+private fun AccountLink(label: String, onClick: () -> Unit) {
+    OutlinedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = CardDefaults.outlinedCardBorder()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Text(
+                text = "›",
+                fontSize = 24.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
     }
-    HorizontalDivider()
 }
