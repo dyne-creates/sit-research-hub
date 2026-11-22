@@ -47,6 +47,9 @@ import compose.project.sit_research_hub.domain.model.StudyType
 import compose.project.sit_research_hub.presentation.home.HomeViewModel
 import compose.project.sit_research_hub.ui.components.BottomBar
 import compose.project.sit_research_hub.ui.components.BottomNavTab
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.OutlinedButton
+
 
 @Composable
 fun HomeScreen(
@@ -273,29 +276,42 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // AVAILABLE STUDIES HEADER
+
+// AVAILABLE STUDIES HEADER
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Available studies",
                             color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
-
                         Text(
                             text = "${visibleStudies.size} studies found",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
                         )
                     }
+
+                    OutlinedButton(
+                        onClick = { viewModel.refresh() },
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(
+                            horizontal = 10.dp,
+                            vertical = 8.dp
+                        )
+                    ) {
+                        Text(
+                            text = "Refresh",
+                            fontSize = 11.sp
+                        )
+                    }
                 }
+
 
                 Spacer(modifier = Modifier.height(12.dp))
 
