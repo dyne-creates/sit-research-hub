@@ -36,7 +36,12 @@ class HomeViewModel(
         filterStudies(all, currentFilters.query, currentFilters.type, currentFilters.eligibleOnly, appSettings.sortOrder, currentProfile)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun refresh() { viewModelScope.launch { _refreshResult.value = studies.refresh() } }
+    fun refresh() {
+        viewModelScope.launch {
+            _refreshResult.value = null
+            _refreshResult.value = studies.refresh()
+        }
+    }
 
     fun updateQuery(query: String) { filters.value = filters.value.copy(query = query) }
     fun updateType(type: StudyType?) { filters.value = filters.value.copy(type = type) }

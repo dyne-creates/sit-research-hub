@@ -316,22 +316,22 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // OFFLINE MESSAGE
-                if (refreshResult is AppResult.Failure) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(MaterialTheme.colorScheme.tertiary)
-                            .padding(12.dp)
-                    ) {
-                        Text(
-                            text = "You're viewing saved studies offline. Some information may not be up to date.",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 11.sp
-                        )
+// REFRESH FEEDBACK
+                if (refreshResult != null) {
+                    val refreshMessage = when (refreshResult) {
+                        is AppResult.Success -> "Research refreshed."
+                        is AppResult.Failure -> "You're viewing saved studies offline."
+                        null -> null
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    refreshMessage?.let {
+                        Text(
+                            text = it,
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 5.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
 
                 // STUDY CARDS

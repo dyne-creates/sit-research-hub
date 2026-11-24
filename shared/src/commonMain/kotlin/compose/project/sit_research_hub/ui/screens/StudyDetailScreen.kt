@@ -44,6 +44,8 @@ fun StudyDetailScreen(
     var message by remember(researchId) { mutableStateOf<String?>(null) }
     var sending by remember { mutableStateOf(false) }
     var slots by remember(researchId) { mutableStateOf<List<InterviewSlot>>(emptyList()) }
+    var showResponseSuccess by remember(researchId) { mutableStateOf(false) }
+    var showInterviewSuccess by remember(researchId) { mutableStateOf(false) }
 
     var interviewDate by remember { mutableStateOf("") }
     var interviewTime by remember { mutableStateOf("") }
@@ -76,8 +78,6 @@ fun StudyDetailScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         // TOP BAR
-
-// TOP BAR
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
@@ -218,8 +218,11 @@ fun StudyDetailScreen(
                     }
                 }
 
-                // ANONYMOUS NOTICE
-                if (item.type == StudyType.QUALITATIVE) {
+
+// RESPONDENT PRIVACY NOTICE
+                if (item.type == StudyType.QUALITATIVE ||
+                    item.type == StudyType.QUANTITATIVE
+                ) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.primaryContainer,
@@ -237,9 +240,14 @@ fun StudyDetailScreen(
                             )
 
                             Text(
-                                "For qualitative studies, your name and email address " +
-                                        "will be recorded to facilitate communication and interview scheduling. " +
-                                        "Your responses will remain confidential.",
+                                text = if (item.type == StudyType.QUALITATIVE) {
+                                    "For qualitative studies, your name and email address " +
+                                            "will be recorded to facilitate communication and interview scheduling. " +
+                                            "Your responses will remain confidential."
+                                } else {
+                                    "Your responses are fully anonymous. Your identity " +
+                                            "will not be shared with the researcher."
+                                },
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -247,185 +255,189 @@ fun StudyDetailScreen(
                     }
                 }
 
+
                 // QUESTIONS
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            "Research questions",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Read each question carefully and provide your response.",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    item.questions.forEachIndexed { index, question ->
-                        ElevatedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.elevatedCardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
+                if (item.type == StudyType.QUANTITATIVE) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "Research questions",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
                             )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            Text(
+                                "Read each question carefully and provide your response.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        item.questions.forEachIndexed { index, question ->
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.elevatedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                )
                             ) {
-                                Text(
-                                    "QUESTION ${index + 1}",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Text(
+                                        "QUESTION ${index + 1}",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
 
-                                Text(
-                                    text = question.text +
-                                            if (question.isRequired) " *" else "",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                                    Text(
+                                        text = question.text +
+                                                if (question.isRequired) " *" else "",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
 
-                                when (question.type) {
-                                    QuestionType.MULTIPLE_CHOICE -> {
-                                        question.options.forEach { option ->
+                                    when (question.type) {
+                                        QuestionType.MULTIPLE_CHOICE -> {
+                                            question.options.forEach { option ->
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable {
+                                                            answers[question.id] = listOf(option)
+                                                        }
+                                                        .padding(vertical = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    RadioButton(
+                                                        selected = answers[question.id]
+                                                            ?.contains(option) == true,
+                                                        onClick = {
+                                                            answers[question.id] = listOf(option)
+                                                        }
+                                                    )
+                                                    Text(
+                                                        text = option,
+                                                        modifier = Modifier.padding(start = 6.dp),
+                                                        fontSize = 13.sp,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        QuestionType.CHECKBOX -> {
+                                            question.options.forEach { option ->
+                                                val selected =
+                                                    option in answers[question.id].orEmpty()
+
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable {
+                                                            answers[question.id] =
+                                                                if (selected) {
+                                                                    answers[question.id]
+                                                                        .orEmpty() - option
+                                                                } else {
+                                                                    answers[question.id]
+                                                                        .orEmpty() + option
+                                                                }
+                                                        }
+                                                        .padding(vertical = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Checkbox(
+                                                        checked = selected,
+                                                        onCheckedChange = { checked ->
+                                                            answers[question.id] =
+                                                                if (checked) {
+                                                                    answers[question.id]
+                                                                        .orEmpty() + option
+                                                                } else {
+                                                                    answers[question.id]
+                                                                        .orEmpty() - option
+                                                                }
+                                                        }
+                                                    )
+                                                    Text(
+                                                        text = option,
+                                                        modifier = Modifier.padding(start = 6.dp),
+                                                        fontSize = 13.sp,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        QuestionType.RATING_SCALE -> {
+                                            Text(
+                                                "Select a rating",
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+
                                             Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable {
-                                                        answers[question.id] = listOf(option)
-                                                    }
-                                                    .padding(vertical = 2.dp),
-                                                verticalAlignment = Alignment.CenterVertically
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                                             ) {
-                                                RadioButton(
-                                                    selected = answers[question.id]
-                                                        ?.contains(option) == true,
-                                                    onClick = {
-                                                        answers[question.id] = listOf(option)
-                                                    }
-                                                )
-                                                Text(
-                                                    text = option,
-                                                    modifier = Modifier.padding(start = 6.dp),
-                                                    fontSize = 13.sp,
-                                                    color = MaterialTheme.colorScheme.onSurface
-                                                )
+                                                (1..question.ratingMax).forEach { value ->
+                                                    FilterChip(
+                                                        selected = answers[question.id]
+                                                            ?.firstOrNull() == value.toString(),
+                                                        onClick = {
+                                                            answers[question.id] =
+                                                                listOf(value.toString())
+                                                        },
+                                                        label = {
+                                                            Text(value.toString())
+                                                        }
+                                                    )
+                                                }
                                             }
                                         }
-                                    }
 
-                                    QuestionType.CHECKBOX -> {
-                                        question.options.forEach { option ->
-                                            val selected =
-                                                option in answers[question.id].orEmpty()
-
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable {
-                                                        answers[question.id] =
-                                                            if (selected) {
-                                                                answers[question.id]
-                                                                    .orEmpty() - option
-                                                            } else {
-                                                                answers[question.id]
-                                                                    .orEmpty() + option
-                                                            }
-                                                    }
-                                                    .padding(vertical = 2.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Checkbox(
-                                                    checked = selected,
-                                                    onCheckedChange = { checked ->
-                                                        answers[question.id] =
-                                                            if (checked) {
-                                                                answers[question.id]
-                                                                    .orEmpty() + option
-                                                            } else {
-                                                                answers[question.id]
-                                                                    .orEmpty() - option
-                                                            }
-                                                    }
-                                                )
-                                                Text(
-                                                    text = option,
-                                                    modifier = Modifier.padding(start = 6.dp),
-                                                    fontSize = 13.sp,
-                                                    color = MaterialTheme.colorScheme.onSurface
-                                                )
-                                            }
+                                        QuestionType.SHORT_ANSWER -> {
+                                            OutlinedTextField(
+                                                value = answers[question.id]
+                                                    ?.firstOrNull().orEmpty(),
+                                                onValueChange = {
+                                                    answers[question.id] = listOf(it)
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                singleLine = true,
+                                                placeholder = {
+                                                    Text("Enter your answer...")
+                                                },
+                                                shape = RoundedCornerShape(10.dp)
+                                            )
                                         }
-                                    }
 
-                                    QuestionType.RATING_SCALE -> {
-                                        Text(
-                                            "Select a rating",
-                                            fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            (1..question.ratingMax).forEach { value ->
-                                                FilterChip(
-                                                    selected = answers[question.id]
-                                                        ?.firstOrNull() == value.toString(),
-                                                    onClick = {
-                                                        answers[question.id] =
-                                                            listOf(value.toString())
-                                                    },
-                                                    label = {
-                                                        Text(value.toString())
-                                                    }
-                                                )
-                                            }
+                                        QuestionType.PARAGRAPH -> {
+                                            OutlinedTextField(
+                                                value = answers[question.id]
+                                                    ?.firstOrNull().orEmpty(),
+                                                onValueChange = {
+                                                    answers[question.id] = listOf(it)
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                minLines = 3,
+                                                placeholder = {
+                                                    Text("Write your response here...")
+                                                },
+                                                shape = RoundedCornerShape(10.dp)
+                                            )
                                         }
-                                    }
-
-                                    QuestionType.SHORT_ANSWER -> {
-                                        OutlinedTextField(
-                                            value = answers[question.id]
-                                                ?.firstOrNull().orEmpty(),
-                                            onValueChange = {
-                                                answers[question.id] = listOf(it)
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            singleLine = true,
-                                            placeholder = {
-                                                Text("Enter your answer...")
-                                            },
-                                            shape = RoundedCornerShape(10.dp)
-                                        )
-                                    }
-
-                                    QuestionType.PARAGRAPH -> {
-                                        OutlinedTextField(
-                                            value = answers[question.id]
-                                                ?.firstOrNull().orEmpty(),
-                                            onValueChange = {
-                                                answers[question.id] = listOf(it)
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            minLines = 3,
-                                            placeholder = {
-                                                Text("Write your response here...")
-                                            },
-                                            shape = RoundedCornerShape(10.dp)
-                                        )
                                     }
                                 }
                             }
                         }
                     }
                 }
+
 
                 // INTERVIEW SCHEDULE
                 if (item.type == StudyType.QUALITATIVE) {
@@ -606,8 +618,8 @@ fun StudyDetailScreen(
                                                                             latest.error.message
                                                                     }
                                                                 }
-                                                                message =
-                                                                    "Interview time selected."
+                                                                message = null
+                                                                showInterviewSuccess = true
                                                             }
 
                                                             is AppResult.Failure -> {
@@ -653,55 +665,113 @@ fun StudyDetailScreen(
             }
 
             // SUBMIT BUTTON
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 5.dp
-            ) {
-                Button(
-                    enabled = !sending &&
-                            !isOwner &&
-                            item.status == StudyStatus.PUBLISHED,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 12.dp)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    onClick = {
-                        scope.launch {
-                            sending = true
+            if (item.type == StudyType.QUANTITATIVE) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 5.dp
+                ) {
+                    Button(
+                        enabled = !sending &&
+                                !isOwner &&
+                                item.status == StudyStatus.PUBLISHED,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 12.dp)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        onClick = {
+                            scope.launch {
+                                sending = true
 
-                            when (
-                                val result = submit(
-                                    item,
-                                    userId,
-                                    profile,
-                                    answers.toMap()
-                                )
-                            ) {
-                                is AppResult.Success -> {
-                                    message = "Your response was submitted."
+                                when (
+                                    val result = submit(
+                                        item,
+                                        userId,
+                                        profile,
+                                        answers.toMap()
+                                    )
+                                ) {
+                                    is AppResult.Success -> {
+                                        message = null
+                                        showResponseSuccess = true
+                                    }
+
+                                    is AppResult.Failure -> {
+                                        message = result.error.message
+                                    }
                                 }
 
-                                is AppResult.Failure -> {
-                                    message = result.error.message
-                                }
+                                sending = false
                             }
+                        }
+                    ) {
+                        Text(
+                            text = when {
+                                sending -> "Submitting..."
+                                isOwner -> "You own this study"
+                                item.status != StudyStatus.PUBLISHED -> "Responses unavailable"
+                                else -> "Submit response"
+                            },
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
 
-                            sending = false
+            // QUANTITATIVE RESPONSE SUCCESS POPUP
+            if (showResponseSuccess) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showResponseSuccess = false
+                    },
+                    title = {
+                        Text("Response recorded")
+                    },
+                    text = {
+                        Text(
+                            "Your response has been recorded. " +
+                                "Thank you for your participation."
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showResponseSuccess = false
+                            }
+                        ) {
+                            Text("Okay")
                         }
                     }
-                ) {
-                    Text(
-                        text = when {
-                            sending -> "Submitting..."
-                            isOwner -> "You own this study"
-                            item.status != StudyStatus.PUBLISHED -> "Responses unavailable"
-                            else -> "Submit response"
-                        },
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                )
+            }
+
+            // QUALITATIVE INTERVIEW BOOKING SUCCESS POPUP
+            if (showInterviewSuccess) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showInterviewSuccess = false
+                    },
+                    title = {
+                        Text("Interview schedule reserved")
+                    },
+                    text = {
+                        Text(
+                            "Your interview schedule has been reserved. " +
+                                "The researcher may contact you through email " +
+                                "for further communication."
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showInterviewSuccess = false
+                            }
+                        ) {
+                            Text("Okay")
+                        }
+                    }
+                )
             }
         }
     }
